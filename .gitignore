@@ -1,0 +1,38 @@
+# R
+.Rhistory
+.RData
+.Rproj.user
+*.Rproj
+
+# Datos crudos de Kaggle: no se versionan (ver README).
+# Se conserva la carpeta vacía gracias a .gitkeep.
+00_data/raw/*
+!00_data/raw/.gitkeep
+
+# Datos intermedios generados por el código (incluye descargas de OSM)
+03_temp/
+
+# Credenciales de Kaggle: NUNCA se suben al repositorio
+kaggle.json
+.kaggle/
+access_token
+
+### macOS ###
+.DS_Store
+.AppleDouble
+.LSOverride
+
+### Windows ###
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+
+### LaTeX: archivos auxiliares de compilación ###
+*.aux
+*.log
+*.nav
+*.out
+*.snm
+*.toc
+*.synctex.gz
