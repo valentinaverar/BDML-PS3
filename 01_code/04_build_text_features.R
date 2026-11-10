@@ -5,7 +5,7 @@
 # Salida: 03_temp/{train_features,test_features}.rds
 
 # Paquetes ----------------------------------------------------------------
-paquetes <- c("readr", "stringr", "stringi")
+paquetes <- c("stringr", "stringi")
 for (paquete in paquetes) {
   if (!require(paquete, character.only = TRUE)) {
     install.packages(paquete)
@@ -15,19 +15,9 @@ for (paquete in paquetes) {
 
 # Cargar datos -------------------------------------------------------------
 dir_temp <- "03_temp"
-dir_raw <- file.path("00_data", "raw")
-dir.create(dir_temp, recursive = TRUE, showWarnings = FALSE)
 
-archivos_geo <- file.path(dir_temp, c("train_geo.rds", "test_geo.rds"))
-if (all(file.exists(archivos_geo))) {
-  train <- readRDS(archivos_geo[1])
-  test <- readRDS(archivos_geo[2])
-  message("Trabajando sobre las bases con geofeatures.")
-} else {
-  train <- readr::read_csv(file.path(dir_raw, "train.csv"), show_col_types = FALSE)
-  test <- readr::read_csv(file.path(dir_raw, "test.csv"), show_col_types = FALSE)
-  message("Trabajando sobre las bases originales.")
-}
+train <- readRDS(file.path(dir_temp, "train_geo.rds"))
+test  <- readRDS(file.path(dir_temp, "test_geo.rds"))
 
 # Patrones: 1 si la caracteristica se menciona; 0 si no se menciona. -------
 patrones <- c(
@@ -86,3 +76,8 @@ diagnostico <- data.frame(
 )
 print(diagnostico, row.names = FALSE)
 message("Guardados: 03_temp/train_features.rds y 03_temp/test_features.rds")
+
+
+#Limpiamos el entorno. todo lo necesario quedo en 03_temp
+rm(list = setdiff(ls(), c("fun_geometrias", "fun_metricas",
+                          "fun_osm", "fun_save_submission")))

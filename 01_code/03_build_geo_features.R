@@ -6,8 +6,12 @@
 # Fuentes externas y raster: 03_temp/geo_cache/
 # Distancias en linea recta, no por red vial.
 
-# Parametros --------------------------------------------------------------
-dir_raw <- file.path("00_data", "raw")
+# Cargamos funciones necesarias:
+
+source("01_code/functions/fun_osm.R")
+source("01_code/functions/fun_geometrias.R")
+
+# Parametros
 dir_temp <- "03_temp"
 dir_cache <- file.path(dir_temp, "geo_cache")
 radio_m <- 500
@@ -15,7 +19,7 @@ crs_m <- 3116
 z_dem <- 12
 forzar_recalculo <- FALSE
 
-paquetes <- c("readr", "dplyr", "sf", "osmdata", "terra", "elevatr")
+paquetes <- c("dplyr", "sf", "osmdata", "terra", "elevatr")
 for (paquete in paquetes) {
   if (!require(paquete, character.only = TRUE)) {
     install.packages(paquete)
@@ -24,8 +28,8 @@ for (paquete in paquetes) {
 }
 
 dir.create(dir_cache, recursive = TRUE, showWarnings = FALSE)
-archivo_train <- file.path(dir_raw, "train.csv")
-archivo_test <- file.path(dir_raw, "test.csv")
+archivo_train <- file.path(dir_temp, "train_clean.rds")
+archivo_test <- file.path(dir_temp, "test_clean.rds")
 salida_train <- file.path(dir_temp, "train_geo.rds")
 salida_test <- file.path(dir_temp, "test_geo.rds")
 
@@ -38,8 +42,8 @@ if (!forzar_recalculo && file.exists(salida_train) && file.exists(salida_test)) 
 } else {
   
   # 1. Leer coordenadas y calcular una vez por ubicacion unica -----------
-  train <- readr::read_csv(archivo_train, show_col_types = FALSE)
-  test <- readr::read_csv(archivo_test, show_col_types = FALSE)
+  train <- readRDS(archivo_train)
+  test <- readRDS(archivo_test)
   
   coords <- rbind(train[c("lon", "lat")], test[c("lon", "lat")])
   if (anyNA(coords) || !all(is.finite(as.matrix(coords)))) {
@@ -59,46 +63,9 @@ if (!forzar_recalculo && file.exists(salida_train) && file.exists(salida_test)) 
   bbox_osm <- unname(c(bb["xmin"], bb["ymin"], bb["xmax"], bb["ymax"]))
   
   # 2. Descargar y reutilizar datos de OpenStreetMap --------------------
-  fun_osm <- function(nombre, clave, valores) {
-    archivo <- file.path(dir_cache, paste0("osm_", nombre, ".rds"))
-    if (file.exists(archivo)) return(readRDS(archivo))
-    
-    message("Descargando OSM: ", nombre)
-    for (intento in 1:3) {
-      resultado <- tryCatch({
-        q <- osmdata::opq(bbox = bbox_osm, timeout = 180)
-        q <- osmdata::add_osm_feature(q, key = clave, value = valores)
-        osmdata::osmdata_sf(q, quiet = TRUE)
-      }, error = function(e) e)
-      if (!inherits(resultado, "error")) {
-        saveRDS(resultado, archivo)
-        return(resultado)
-      }
-      message("Intento ", intento, " fallido: ", conditionMessage(resultado))
-      if (intento < 3) Sys.sleep(10 * intento)
-    }
-    stop("No se pudo descargar OSM: ", nombre)
-  }
   
   # Extraer solo los elementos que tienen la etiqueta solicitada.
-  fun_geometrias <- function(osm, clave, valores,
-                             tipos = c("osm_points", "osm_polygons",
-                                       "osm_multipolygons"), a_puntos = FALSE) {
-    geom <- list()
-    for (tipo in tipos) {
-      x <- osm[[tipo]]
-      if (is.null(x) || nrow(x) == 0 || !clave %in% names(x)) next
-      x <- x[!is.na(x[[clave]]) & x[[clave]] %in% valores, , drop = FALSE]
-      if (nrow(x) == 0) next
-      x <- sf::st_make_valid(sf::st_transform(x, crs_m))
-      if (a_puntos && tipo != "osm_points") {
-        x <- suppressWarnings(sf::st_point_on_surface(x))
-      }
-      geom[[length(geom) + 1]] <- sf::st_geometry(x)
-    }
-    if (!length(geom)) return(sf::st_sfc(crs = crs_m))
-    do.call(c, geom)
-  }
+  
   
   # Estaciones troncales: capa oficial IDECA (MapServer, layer 9).
   archivo_tm <- file.path(dir_cache, "estaciones_troncales.geojson")
@@ -240,3 +207,8 @@ if (!forzar_recalculo && file.exists(salida_train) && file.exists(salida_test)) 
     NA_test = colSums(is.na(test_geo[nombres]))
   ), row.names = FALSE)
 }
+
+#Limpiamos el entorno. Dejamos las funciones y de resto todo lo necesario quedo en 03_temp
+
+rm(list = setdiff(ls(), c("fun_geometrias", "fun_metricas",
+                          "fun_osm", "fun_save_submission")))
