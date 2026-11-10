@@ -17,10 +17,6 @@
 #   4. Si nada de lo anterior es posible, el script se detiene con un
 #      mensaje de error que explica cómo obtener los datos.
 #
-# Decisión: los datos NO se guardan en el repositorio. La plantilla del curso
-# pide no versionar datos crudos y, además, train_personas.csv (~242 MB)
-# supera el límite de 100 MB por archivo de GitHub. Los datos se obtienen
-# siempre de la fuente original (Kaggle).
 ##########################################################
 
 
