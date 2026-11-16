@@ -1,6 +1,25 @@
-# PS3 - Limpieza estructural ----------------------------------------------
-# Entrada: 00_data/raw/{train,test}.csv
-# Salida:  03_temp/{train_clean,test_clean}.rds
+##########################################################
+# 02_clean_data.R
+#
+# Objetivo: limpieza estructural de las bases de propiedades (train y test),
+# sin imputar ni eliminar observaciones.
+#
+# Etapa del Problem Set: Etapa 1: Understanding and Expanding the Data.
+# Insumos:  00_data/raw/train.csv y 00_data/raw/test.csv.
+# Salidas:  03_temp/train_clean.rds y 03_temp/test_clean.rds.
+#
+# Qué hace:
+#   1. Reemplaza los títulos y descripciones faltantes por texto vacío, para
+#      que el script de variables de texto no falle con NA.
+#   2. Crea tres indicadores de problemas en la superficie: sin información,
+#      inconsistente (construida mayor que total) y valores extremos.
+#   3. Elimina city y operation_type, que son constantes en train y test
+#      ("Bogotá D.C" y "Venta"): no aportan información al modelo.
+#
+# Decisión: no se eliminan observaciones. En test hay que predecir todas
+# las propiedades, así que los problemas se marcan con indicadores en lugar
+# de borrarse, y los modelos deciden cómo usarlos.
+##########################################################
 
 paquetes <- c("readr", "dplyr")
 for (paquete in paquetes) {

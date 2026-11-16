@@ -1,8 +1,25 @@
-# PS3 - Features textuales -------------------------------------------------
-# Ejecutar desde la raiz del repositorio:
-# source("01_code/04_build_text_features.R")
-# Usa las bases con geofeatures si existen; si no, usa los CSV originales.
-# Salida: 03_temp/{train_features,test_features}.rds
+##########################################################
+# 04_build_text_features.R
+#
+# Objetivo: construir predictores a partir del título y la descripción de
+# cada anuncio (requisito: al menos cuatro).
+#
+# Etapa del Problem Set: Etapa 1: Understanding and Expanding the Data.
+# Insumos:  03_temp/train_geo.rds y 03_temp/test_geo.rds.
+# Salidas:  03_temp/train_features.rds y 03_temp/test_features.rds.
+#
+# Variables generadas (8): indicadoras que valen 1 si el anuncio menciona
+# la característica y 0 si no: txt_balcon_terraza, txt_remodelado,
+# txt_vista, txt_seguridad, txt_iluminacion, txt_amenidades,
+# txt_parqueadero y txt_ascensor.
+#
+# Decisiones:
+#   - El texto se pasa a minúsculas, sin tildes ni signos de puntuación,
+#     para que "Balcón" y "balcon" cuenten igual.
+#   - Se eliminan las negaciones directas ("sin ascensor", "no tiene
+#     parqueadero ni garaje") antes de buscar las palabras, para no marcar
+#     como presente una característica que el anuncio dice que no tiene.
+##########################################################
 
 # Objetos que ya existían en el entorno antes de correr este script. Al
 # final se borra solo lo que este script creó, sin tocar lo demás.

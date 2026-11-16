@@ -1,10 +1,35 @@
-# PS3 - Features geograficas -----------------------------------------------
-# Ejecutar desde la raiz del repositorio:
-# source("01_code/03_build_geo_features.R")
-# Entrada: 00_data/raw/{train,test}.csv
-# Salida:  03_temp/{train_geo,test_geo}.rds
-# Fuentes externas y raster: 03_temp/geo_cache/
-# Distancias en linea recta, no por red vial.
+##########################################################
+# 03_build_geo_features.R
+#
+# Objetivo: construir predictores del entorno de cada propiedad a partir de
+# fuentes externas (requisito: al menos cuatro).
+#
+# Etapa del Problem Set: Etapa 1: Understanding and Expanding the Data.
+# Insumos:  03_temp/train_clean.rds y 03_temp/test_clean.rds.
+# Salidas:  03_temp/train_geo.rds y 03_temp/test_geo.rds.
+#           Descargas guardadas en 03_temp/geo_cache/ para no repetirlas.
+#
+# Variables generadas (8) y su fuente:
+#   - dist_transmilenio_m: distancia a la estación troncal más cercana
+#     (capa oficial de IDECA, Catastro Bogotá).
+#   - dist_via_principal_m, dist_centro_comercial_m, dist_parque_m,
+#     dist_universidad_m: distancia al elemento más cercano (OpenStreetMap).
+#   - num_restaurantes_cafes_500m: número de restaurantes y cafés a menos de
+#     500 m (OpenStreetMap).
+#   - pct_zona_verde_500m: porcentaje del círculo de 500 m cubierto por
+#     parques, jardines, bosques o pasto (OpenStreetMap).
+#   - pendiente_terreno_pct: pendiente del terreno en la ubicación, a partir
+#     de un modelo digital de elevación (paquete elevatr).
+#
+# Decisiones:
+#   - Las distancias son en línea recta, no por la red de calles.
+#   - Se trabaja en un CRS proyectado (crs_m) para medir en metros.
+#   - Muchas propiedades comparten coordenadas, así que cada variable se
+#     calcula una sola vez por ubicación única y luego se asigna a todas las
+#     propiedades de esa ubicación.
+#   - Si las bases de salida ya existen, no se recalculan (cambiar
+#     forzar_recalculo a TRUE para rehacerlas).
+##########################################################
 
 # Objetos que ya existían en el entorno antes de correr este script. Al
 # final se borra solo lo que este script creó, sin tocar lo demás.
