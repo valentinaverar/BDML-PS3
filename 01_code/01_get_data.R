@@ -5,9 +5,7 @@
 # 00_data/raw/, listos para los siguientes scripts.
 #
 # Insumos:  ninguno (o el zip / los CSV de la competencia, si ya existen).
-# Salidas:  00_data/raw/ con train.csv, train_personas.csv,
-#           test_hogares.csv, test.csv, sample_submission.csv
-#           
+# Salidas:  00_data/raw/ con train.csv, test.csv y submission_template.csv.
 #
 # Lógica ("esquema mixto"). Se usa la primera opción que funcione:
 #   1. Si los CSV ya están en 00_data/raw/, se usan tal cual.
@@ -17,6 +15,9 @@
 #   4. Si nada de lo anterior es posible, el script se detiene con un
 #      mensaje de error que explica cómo obtener los datos.
 #
+# Decisión: los datos NO se guardan en el repositorio. La plantilla del
+# curso pide no versionar datos crudos; se obtienen siempre de la fuente
+# original (Kaggle).
 ##########################################################
 
 
