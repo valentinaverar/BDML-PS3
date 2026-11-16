@@ -91,10 +91,8 @@ if (!forzar_recalculo && file.exists(salida_train) && file.exists(salida_test)) 
   bb <- sf::st_bbox(sf::st_transform(area, 4326))
   bbox_osm <- unname(c(bb["xmin"], bb["ymin"], bb["xmax"], bb["ymax"]))
   
-  # 2. Descargar y reutilizar datos de OpenStreetMap --------------------
-  
-  # Extraer solo los elementos que tienen la etiqueta solicitada.
-  
+  # 2. Descargar y reutilizar datos externos ----------------------------
+  # Cada capa se descarga una sola vez y queda guardada en dir_cache.
   
   # Estaciones troncales: capa oficial IDECA (MapServer, layer 9).
   archivo_tm <- file.path(dir_cache, "estaciones_troncales.geojson")
@@ -115,34 +113,46 @@ if (!forzar_recalculo && file.exists(salida_train) && file.exists(salida_test)) 
   if (!nrow(tm)) stop("La capa de estaciones esta vacia.")
   tm <- sf::st_geometry(sf::st_transform(tm, crs_m))
   
+  # Capas de OpenStreetMap: fun_osm() descarga (o lee del caché) y
+  # fun_geometrias() conserva solo los elementos con la etiqueta pedida.
   osm_vias <- fun_osm("vias", "highway",
-                      c("motorway", "trunk", "primary", "secondary"))
+                      c("motorway", "trunk", "primary", "secondary"),
+                      .bbox = bbox_osm, .dir_cache = dir_cache)
   vias <- fun_geometrias(osm_vias, "highway",
                          c("motorway", "trunk", "primary", "secondary"),
-                         tipos = c("osm_lines", "osm_multilines"))
+                         .crs = crs_m,
+                         .tipos = c("osm_lines", "osm_multilines"))
   
-  osm_cc <- fun_osm("cc", "shop", "mall")
-  cc <- fun_geometrias(osm_cc, "shop", "mall")
+  osm_cc <- fun_osm("cc", "shop", "mall",
+                    .bbox = bbox_osm, .dir_cache = dir_cache)
+  cc <- fun_geometrias(osm_cc, "shop", "mall", .crs = crs_m)
   
-  osm_parques <- fun_osm("parques", "leisure", c("park", "garden"))
-  parques <- fun_geometrias(osm_parques, "leisure", "park")
+  osm_parques <- fun_osm("parques", "leisure", c("park", "garden"),
+                         .bbox = bbox_osm, .dir_cache = dir_cache)
+  parques <- fun_geometrias(osm_parques, "leisure", "park", .crs = crs_m)
   
-  osm_universidades <- fun_osm("universidades", "amenity", "university")
-  universidades <- fun_geometrias(osm_universidades, "amenity", "university")
+  osm_universidades <- fun_osm("universidades", "amenity", "university",
+                               .bbox = bbox_osm, .dir_cache = dir_cache)
+  universidades <- fun_geometrias(osm_universidades, "amenity", "university",
+                                  .crs = crs_m)
   
-  osm_gastro <- fun_osm("gastro", "amenity", c("restaurant", "cafe"))
+  osm_gastro <- fun_osm("gastro", "amenity", c("restaurant", "cafe"),
+                        .bbox = bbox_osm, .dir_cache = dir_cache)
   gastronomia <- fun_geometrias(osm_gastro, "amenity",
-                                c("restaurant", "cafe"), a_puntos = TRUE)
+                                c("restaurant", "cafe"), .crs = crs_m,
+                                .a_puntos = TRUE)
   
-  osm_bosques <- fun_osm("bosques", "natural", "wood")
-  osm_cesped <- fun_osm("cesped", "landuse", c("grass", "forest"))
+  osm_bosques <- fun_osm("bosques", "natural", "wood",
+                         .bbox = bbox_osm, .dir_cache = dir_cache)
+  osm_cesped <- fun_osm("cesped", "landuse", c("grass", "forest"),
+                        .bbox = bbox_osm, .dir_cache = dir_cache)
   verdes <- c(
-    fun_geometrias(osm_parques, "leisure", c("park", "garden"),
-                   tipos = c("osm_polygons", "osm_multipolygons")),
-    fun_geometrias(osm_bosques, "natural", "wood",
-                   tipos = c("osm_polygons", "osm_multipolygons")),
-    fun_geometrias(osm_cesped, "landuse", c("grass", "forest"),
-                   tipos = c("osm_polygons", "osm_multipolygons"))
+    fun_geometrias(osm_parques, "leisure", c("park", "garden"), .crs = crs_m,
+                   .tipos = c("osm_polygons", "osm_multipolygons")),
+    fun_geometrias(osm_bosques, "natural", "wood", .crs = crs_m,
+                   .tipos = c("osm_polygons", "osm_multipolygons")),
+    fun_geometrias(osm_cesped, "landuse", c("grass", "forest"), .crs = crs_m,
+                   .tipos = c("osm_polygons", "osm_multipolygons"))
   )
   if (!length(verdes)) stop("OSM no devolvio poligonos de zonas verdes.")
   verdes <- sf::st_collection_extract(sf::st_make_valid(verdes),
