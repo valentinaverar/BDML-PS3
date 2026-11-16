@@ -26,13 +26,8 @@
 objetos_previos <- ls()
 
 # Paquetes ----------------------------------------------------------------
-paquetes <- c("stringr", "stringi")
-for (paquete in paquetes) {
-  if (!require(paquete, character.only = TRUE)) {
-    install.packages(paquete)
-    library(paquete, character.only = TRUE)
-  }
-}
+if (!require(pacman)) install.packages("pacman")
+pacman::p_load(stringr, stringi)
 
 # Cargar datos -------------------------------------------------------------
 dir_temp <- "03_temp"
@@ -102,4 +97,3 @@ message("Guardados: 03_temp/train_features.rds y 03_temp/test_features.rds")
 # Limpiamos el entorno: borramos solo los objetos que creó este script.
 # Todo lo necesario quedó guardado en 03_temp/.
 rm(list = setdiff(ls(), objetos_previos))
-rm(objetos_previos)

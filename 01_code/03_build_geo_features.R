@@ -48,13 +48,9 @@ crs_m <- 3116
 z_dem <- 12
 forzar_recalculo <- FALSE
 
-paquetes <- c("dplyr", "sf", "osmdata", "terra", "elevatr")
-for (paquete in paquetes) {
-  if (!require(paquete, character.only = TRUE)) {
-    install.packages(paquete)
-    library(paquete, character.only = TRUE)
-  }
-}
+# Paquetes ----------------------------------------------------------------
+if (!require(pacman)) install.packages("pacman")
+pacman::p_load(dplyr, sf, osmdata, terra, elevatr)
 
 dir.create(dir_cache, recursive = TRUE, showWarnings = FALSE)
 archivo_train <- file.path(dir_temp, "train_clean.rds")
@@ -63,7 +59,8 @@ salida_train <- file.path(dir_temp, "train_geo.rds")
 salida_test <- file.path(dir_temp, "test_geo.rds")
 
 if (!all(file.exists(c(archivo_train, archivo_test)))) {
-  stop("Faltan train.csv o test.csv en 00_data/raw/.")
+  stop("Faltan 03_temp/train_clean.rds o 03_temp/test_clean.rds. ",
+       "Corra primero 01_code/02_clean_data.R.")
 }
 
 if (!forzar_recalculo && file.exists(salida_train) && file.exists(salida_test)) {
@@ -251,4 +248,3 @@ if (!forzar_recalculo && file.exists(salida_train) && file.exists(salida_test)) 
 # Todo lo necesario quedó guardado en 03_temp/. Conservamos las funciones
 # de OSM por si otro script las necesita.
 rm(list = setdiff(ls(), c(objetos_previos, "fun_osm", "fun_geometrias")))
-rm(objetos_previos)

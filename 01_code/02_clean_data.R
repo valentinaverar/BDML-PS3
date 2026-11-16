@@ -21,13 +21,9 @@
 # de borrarse, y los modelos deciden cómo usarlos.
 ##########################################################
 
-paquetes <- c("readr", "dplyr")
-for (paquete in paquetes) {
-  if (!require(paquete, character.only = TRUE)) {
-    install.packages(paquete)
-    library(paquete, character.only = TRUE)
-  }
-}
+# Paquetes ----------------------------------------------------------------
+if (!require(pacman)) install.packages("pacman")
+pacman::p_load(readr, dplyr)
 
 dir.create("03_temp", showWarnings = FALSE)
 
@@ -59,4 +55,4 @@ saveRDS(test, "03_temp/test_clean.rds")
 message("Bases limpias guardadas en 03_temp/. Filas: train = ", nrow(train),
         "; test = ", nrow(test), ".")
 
-rm(train, test, fun_limpiar, paquetes, paquete)
+rm(train, test, fun_limpiar)
