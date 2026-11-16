@@ -6,6 +6,10 @@
 # Fuentes externas y raster: 03_temp/geo_cache/
 # Distancias en linea recta, no por red vial.
 
+# Objetos que ya existían en el entorno antes de correr este script. Al
+# final se borra solo lo que este script creó, sin tocar lo demás.
+objetos_previos <- ls()
+
 # Cargamos funciones necesarias:
 
 source("01_code/functions/fun_osm.R")
@@ -208,7 +212,8 @@ if (!forzar_recalculo && file.exists(salida_train) && file.exists(salida_test)) 
   ), row.names = FALSE)
 }
 
-#Limpiamos el entorno. Dejamos las funciones y de resto todo lo necesario quedo en 03_temp
-
-rm(list = setdiff(ls(), c("fun_geometrias", "fun_metricas",
-                          "fun_osm", "fun_save_submission")))
+# Limpiamos el entorno: borramos solo los objetos que creó este script.
+# Todo lo necesario quedó guardado en 03_temp/. Conservamos las funciones
+# de OSM por si otro script las necesita.
+rm(list = setdiff(ls(), c(objetos_previos, "fun_osm", "fun_geometrias")))
+rm(objetos_previos)

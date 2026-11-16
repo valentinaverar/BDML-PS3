@@ -4,6 +4,10 @@
 # Usa las bases con geofeatures si existen; si no, usa los CSV originales.
 # Salida: 03_temp/{train_features,test_features}.rds
 
+# Objetos que ya existían en el entorno antes de correr este script. Al
+# final se borra solo lo que este script creó, sin tocar lo demás.
+objetos_previos <- ls()
+
 # Paquetes ----------------------------------------------------------------
 paquetes <- c("stringr", "stringi")
 for (paquete in paquetes) {
@@ -78,6 +82,7 @@ print(diagnostico, row.names = FALSE)
 message("Guardados: 03_temp/train_features.rds y 03_temp/test_features.rds")
 
 
-#Limpiamos el entorno. todo lo necesario quedo en 03_temp
-rm(list = setdiff(ls(), c("fun_geometrias", "fun_metricas",
-                          "fun_osm", "fun_save_submission")))
+# Limpiamos el entorno: borramos solo los objetos que creó este script.
+# Todo lo necesario quedó guardado en 03_temp/.
+rm(list = setdiff(ls(), objetos_previos))
+rm(objetos_previos)
