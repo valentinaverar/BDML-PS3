@@ -1,10 +1,39 @@
-# PS3 - Features geograficas -----------------------------------------------
-# Ejecutar desde la raiz del repositorio:
-# source("01_code/03_build_geo_features.R")
-# Entrada: 00_data/raw/{train,test}.csv
-# Salida:  03_temp/{train_geo,test_geo}.rds
-# Fuentes externas y raster: 03_temp/geo_cache/
-# Distancias en linea recta, no por red vial.
+##########################################################
+# 03_build_geo_features.R
+#
+# Objetivo: construir predictores del entorno de cada propiedad a partir de
+# fuentes externas (requisito: al menos cuatro).
+#
+# Etapa del Problem Set: Etapa 1: Understanding and Expanding the Data.
+# Insumos:  03_temp/train_clean.rds y 03_temp/test_clean.rds.
+# Salidas:  03_temp/train_geo.rds y 03_temp/test_geo.rds.
+#           Descargas guardadas en 03_temp/geo_cache/ para no repetirlas.
+#
+# Variables generadas (8) y su fuente:
+#   - dist_transmilenio_m: distancia a la estación troncal más cercana
+#     (capa oficial de IDECA, Catastro Bogotá).
+#   - dist_via_principal_m, dist_centro_comercial_m, dist_parque_m,
+#     dist_universidad_m: distancia al elemento más cercano (OpenStreetMap).
+#   - num_restaurantes_cafes_500m: número de restaurantes y cafés a menos de
+#     500 m (OpenStreetMap).
+#   - pct_zona_verde_500m: porcentaje del círculo de 500 m cubierto por
+#     parques, jardines, bosques o pasto (OpenStreetMap).
+#   - pendiente_terreno_pct: pendiente del terreno en la ubicación, a partir
+#     de un modelo digital de elevación (paquete elevatr).
+#
+# Decisiones:
+#   - Las distancias son en línea recta, no por la red de calles.
+#   - Se trabaja en un CRS proyectado (crs_m) para medir en metros.
+#   - Muchas propiedades comparten coordenadas, así que cada variable se
+#     calcula una sola vez por ubicación única y luego se asigna a todas las
+#     propiedades de esa ubicación.
+#   - Si las bases de salida ya existen, no se recalculan (cambiar
+#     forzar_recalculo a TRUE para rehacerlas).
+##########################################################
+
+# Objetos que ya existían en el entorno antes de correr este script. Al
+# final se borra solo lo que este script creó, sin tocar lo demás.
+objetos_previos <- ls()
 
 # Cargamos funciones necesarias:
 
@@ -19,13 +48,9 @@ crs_m <- 3116
 z_dem <- 12
 forzar_recalculo <- FALSE
 
-paquetes <- c("dplyr", "sf", "osmdata", "terra", "elevatr")
-for (paquete in paquetes) {
-  if (!require(paquete, character.only = TRUE)) {
-    install.packages(paquete)
-    library(paquete, character.only = TRUE)
-  }
-}
+# Paquetes ----------------------------------------------------------------
+if (!require(pacman)) install.packages("pacman")
+pacman::p_load(dplyr, sf, osmdata, terra, elevatr)
 
 dir.create(dir_cache, recursive = TRUE, showWarnings = FALSE)
 archivo_train <- file.path(dir_temp, "train_clean.rds")
@@ -34,7 +59,8 @@ salida_train <- file.path(dir_temp, "train_geo.rds")
 salida_test <- file.path(dir_temp, "test_geo.rds")
 
 if (!all(file.exists(c(archivo_train, archivo_test)))) {
-  stop("Faltan train.csv o test.csv en 00_data/raw/.")
+  stop("Faltan 03_temp/train_clean.rds o 03_temp/test_clean.rds. ",
+       "Corra primero 01_code/02_clean_data.R.")
 }
 
 if (!forzar_recalculo && file.exists(salida_train) && file.exists(salida_test)) {
@@ -62,10 +88,8 @@ if (!forzar_recalculo && file.exists(salida_train) && file.exists(salida_test)) 
   bb <- sf::st_bbox(sf::st_transform(area, 4326))
   bbox_osm <- unname(c(bb["xmin"], bb["ymin"], bb["xmax"], bb["ymax"]))
   
-  # 2. Descargar y reutilizar datos de OpenStreetMap --------------------
-  
-  # Extraer solo los elementos que tienen la etiqueta solicitada.
-  
+  # 2. Descargar y reutilizar datos externos ----------------------------
+  # Cada capa se descarga una sola vez y queda guardada en dir_cache.
   
   # Estaciones troncales: capa oficial IDECA (MapServer, layer 9).
   archivo_tm <- file.path(dir_cache, "estaciones_troncales.geojson")
@@ -86,34 +110,46 @@ if (!forzar_recalculo && file.exists(salida_train) && file.exists(salida_test)) 
   if (!nrow(tm)) stop("La capa de estaciones esta vacia.")
   tm <- sf::st_geometry(sf::st_transform(tm, crs_m))
   
+  # Capas de OpenStreetMap: fun_osm() descarga (o lee del caché) y
+  # fun_geometrias() conserva solo los elementos con la etiqueta pedida.
   osm_vias <- fun_osm("vias", "highway",
-                      c("motorway", "trunk", "primary", "secondary"))
+                      c("motorway", "trunk", "primary", "secondary"),
+                      .bbox = bbox_osm, .dir_cache = dir_cache)
   vias <- fun_geometrias(osm_vias, "highway",
                          c("motorway", "trunk", "primary", "secondary"),
-                         tipos = c("osm_lines", "osm_multilines"))
+                         .crs = crs_m,
+                         .tipos = c("osm_lines", "osm_multilines"))
   
-  osm_cc <- fun_osm("cc", "shop", "mall")
-  cc <- fun_geometrias(osm_cc, "shop", "mall")
+  osm_cc <- fun_osm("cc", "shop", "mall",
+                    .bbox = bbox_osm, .dir_cache = dir_cache)
+  cc <- fun_geometrias(osm_cc, "shop", "mall", .crs = crs_m)
   
-  osm_parques <- fun_osm("parques", "leisure", c("park", "garden"))
-  parques <- fun_geometrias(osm_parques, "leisure", "park")
+  osm_parques <- fun_osm("parques", "leisure", c("park", "garden"),
+                         .bbox = bbox_osm, .dir_cache = dir_cache)
+  parques <- fun_geometrias(osm_parques, "leisure", "park", .crs = crs_m)
   
-  osm_universidades <- fun_osm("universidades", "amenity", "university")
-  universidades <- fun_geometrias(osm_universidades, "amenity", "university")
+  osm_universidades <- fun_osm("universidades", "amenity", "university",
+                               .bbox = bbox_osm, .dir_cache = dir_cache)
+  universidades <- fun_geometrias(osm_universidades, "amenity", "university",
+                                  .crs = crs_m)
   
-  osm_gastro <- fun_osm("gastro", "amenity", c("restaurant", "cafe"))
+  osm_gastro <- fun_osm("gastro", "amenity", c("restaurant", "cafe"),
+                        .bbox = bbox_osm, .dir_cache = dir_cache)
   gastronomia <- fun_geometrias(osm_gastro, "amenity",
-                                c("restaurant", "cafe"), a_puntos = TRUE)
+                                c("restaurant", "cafe"), .crs = crs_m,
+                                .a_puntos = TRUE)
   
-  osm_bosques <- fun_osm("bosques", "natural", "wood")
-  osm_cesped <- fun_osm("cesped", "landuse", c("grass", "forest"))
+  osm_bosques <- fun_osm("bosques", "natural", "wood",
+                         .bbox = bbox_osm, .dir_cache = dir_cache)
+  osm_cesped <- fun_osm("cesped", "landuse", c("grass", "forest"),
+                        .bbox = bbox_osm, .dir_cache = dir_cache)
   verdes <- c(
-    fun_geometrias(osm_parques, "leisure", c("park", "garden"),
-                   tipos = c("osm_polygons", "osm_multipolygons")),
-    fun_geometrias(osm_bosques, "natural", "wood",
-                   tipos = c("osm_polygons", "osm_multipolygons")),
-    fun_geometrias(osm_cesped, "landuse", c("grass", "forest"),
-                   tipos = c("osm_polygons", "osm_multipolygons"))
+    fun_geometrias(osm_parques, "leisure", c("park", "garden"), .crs = crs_m,
+                   .tipos = c("osm_polygons", "osm_multipolygons")),
+    fun_geometrias(osm_bosques, "natural", "wood", .crs = crs_m,
+                   .tipos = c("osm_polygons", "osm_multipolygons")),
+    fun_geometrias(osm_cesped, "landuse", c("grass", "forest"), .crs = crs_m,
+                   .tipos = c("osm_polygons", "osm_multipolygons"))
   )
   if (!length(verdes)) stop("OSM no devolvio poligonos de zonas verdes.")
   verdes <- sf::st_collection_extract(sf::st_make_valid(verdes),
@@ -208,7 +244,7 @@ if (!forzar_recalculo && file.exists(salida_train) && file.exists(salida_test)) 
   ), row.names = FALSE)
 }
 
-#Limpiamos el entorno. Dejamos las funciones y de resto todo lo necesario quedo en 03_temp
-
-rm(list = setdiff(ls(), c("fun_geometrias", "fun_metricas",
-                          "fun_osm", "fun_save_submission")))
+# Limpiamos el entorno: borramos solo los objetos que creó este script.
+# Todo lo necesario quedó guardado en 03_temp/. Conservamos las funciones
+# de OSM por si otro script las necesita.
+rm(list = setdiff(ls(), c(objetos_previos, "fun_osm", "fun_geometrias")))
