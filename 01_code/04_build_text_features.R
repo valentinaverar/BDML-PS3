@@ -1,43 +1,30 @@
 ##########################################################
 # 04_build_text_features.R
 #
-# Objetivo: construir predictores a partir del título y la descripción de
-# cada anuncio (requisito: al menos cuatro).
-#
-# Etapa del Problem Set: Etapa 1: Understanding and Expanding the Data.
+# Objetivo: crear variables a partir del titulo y la descripcion.
 # Insumos:  03_temp/train_geo.rds y 03_temp/test_geo.rds.
 # Salidas:  03_temp/train_features.rds y 03_temp/test_features.rds.
 #
-# Variables generadas (8): indicadoras que valen 1 si el anuncio menciona
-# la característica y 0 si no: txt_balcon_terraza, txt_remodelado,
-# txt_vista, txt_seguridad, txt_iluminacion, txt_amenidades,
-# txt_parqueadero y txt_ascensor.
-#
-# Decisiones:
-#   - El texto se pasa a minúsculas, sin tildes ni signos de puntuación,
-#     para que "Balcón" y "balcon" cuenten igual.
-#   - Se eliminan las negaciones directas ("sin ascensor", "no tiene
-#     parqueadero ni garaje") antes de buscar las palabras, para no marcar
-#     como presente una característica que el anuncio dice que no tiene.
+# Se mantienen los ocho indicadores originales y se agregan:
+#   txt_balcon, txt_terraza, txt_antiguedad_anios.
+# txt_parqueadero ya existia.
 ##########################################################
-
-# Objetos que ya existían en el entorno antes de correr este script. Al
-# final se borra solo lo que este script creó, sin tocar lo demás.
 objetos_previos <- ls()
 
 # Paquetes ----------------------------------------------------------------
 if (!require(pacman)) install.packages("pacman")
 pacman::p_load(stringr, stringi)
 
-# Cargar datos -------------------------------------------------------------
+# Cargar datos ------------------------------------------------------------
 dir_temp <- "03_temp"
-
 train <- readRDS(file.path(dir_temp, "train_geo.rds"))
 test  <- readRDS(file.path(dir_temp, "test_geo.rds"))
 
-# Patrones: 1 si la caracteristica se menciona; 0 si no se menciona. -------
+# Patrones: 1 si se menciona la caracteristica, 0 si no --------------------
 patrones <- c(
   txt_balcon_terraza = "\\b(?:balcon(?:es)?|terraza(?:s)?)\\b",
+  txt_balcon = "\\b(?:balcon(?:es)?)\\b",
+  txt_terraza = "\\b(?:terraza(?:s)?)\\b",
   txt_remodelado = "\\b(?:remodelad[oa]s?|renovad[oa]s?|reformad[oa]s?|restaurad[oa]s?)\\b",
   txt_vista = "\\b(?:vista\\s+(?:panoramica|a la ciudad|exterior|espectacular|privilegiada|abierta)|excelente\\s+vista|hermosa\\s+vista)\\b",
   txt_seguridad = "\\b(?:vigilancia|porteria|conjunto cerrado|seguridad 24|control de acceso|recepcion 24)\\b",
@@ -47,20 +34,19 @@ patrones <- c(
   txt_ascensor = "\\b(?:ascensor(?:es)?|elevador(?:es)?)\\b"
 )
 
-# Negaciones directas: p. ej. "sin ascensor" o "no tiene parqueadero".
-# No pretende resolver todas las negaciones del lenguaje natural.
+# Quitar negaciones directas antes de buscar menciones positivas ----------
 negables <- paste0(
   "(?:balcon(?:es)?|terraza(?:s)?|vigilancia|porteria|gimnasio|piscina|",
   "sauna|jacuzzi|parqueader[oa]s?|garajes?|estacionamientos?|",
   "ascensor(?:es)?|elevador(?:es)?)"
 )
 patron_negacion <- paste0(
-  "\\b(?:sin|no tiene|no cuenta con|carece de|no dispone de|no hay)\\s+",
+  "\\b(?:sin|no tiene|no cuenta con|no incluye|carece de|no dispone de|no hay)\\s+",
   "(?:(?:un|una|de)\\s+)?", negables,
-  "(?:\\s+(?:ni|o)\\s+", negables, ")*\\b"
+  "(?:\\s+(?:ni|o|y)\\s+", negables, ")*\\b"
 )
 
-# Construir las ocho variables --------------------------------------------
+# Construir variables -----------------------------------------------------
 fun_features_texto <- function(datos) {
   titulo <- ifelse(is.na(datos$title), "", datos$title)
   descripcion <- ifelse(is.na(datos$description), "", datos$description)
@@ -74,13 +60,24 @@ fun_features_texto <- function(datos) {
     as.integer(stringr::str_detect(texto, patron))
   }))
   names(nuevas) <- names(patrones)
+  
+  # Antiguedad explicita: "10 anos de antiguedad", "antiguedad de 10 anos"
+  # o "construido hace 10 anos". "Para estrenar" equivale a 0.
+  edad1 <- stringr::str_match(texto,
+                              "\\b(?:antiguedad\\s*(?:de\\s*)?|construid[oa]\\s+hace\\s*)(\\d{1,3})\\s*anos?\\b")[, 2]
+  edad2 <- stringr::str_match(texto,
+                              "\\b(\\d{1,3})\\s*anos?\\s*(?:de\\s*)?antiguedad\\b")[, 2]
+  edad <- as.integer(ifelse(!is.na(edad1), edad1, edad2))
+  edad[is.na(edad) & stringr::str_detect(texto, "\\b(?:para|a) estrenar\\b")] <- 0L
+  nuevas$txt_antiguedad_anios <- edad
+  
   cbind(datos, nuevas)
 }
 
 train_features <- fun_features_texto(train)
 test_features <- fun_features_texto(test)
 
-# Guardar y diagnosticar ---------------------------------------------------
+# Guardar y diagnosticar --------------------------------------------------
 saveRDS(train_features, file.path(dir_temp, "train_features.rds"))
 saveRDS(test_features, file.path(dir_temp, "test_features.rds"))
 
@@ -91,9 +88,10 @@ diagnostico <- data.frame(
   test_pct = round(100 * colMeans(test_features[variables]), 2)
 )
 print(diagnostico, row.names = FALSE)
+message("Cobertura de antiguedad: train ",
+        round(mean(!is.na(train_features$txt_antiguedad_anios)) * 100, 1),
+        "%, test ", round(mean(!is.na(test_features$txt_antiguedad_anios)) * 100, 1), "%")
 message("Guardados: 03_temp/train_features.rds y 03_temp/test_features.rds")
 
-
-# Limpiamos el entorno: borramos solo los objetos que creó este script.
-# Todo lo necesario quedó guardado en 03_temp/.
 rm(list = setdiff(ls(), objetos_previos))
+
