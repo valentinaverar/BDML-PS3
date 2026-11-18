@@ -66,7 +66,7 @@ source("01_code/04_build_text_features.R")
 # source("01_code/08_model_elastic_net.R")
 # source("01_code/09_model_cart.R")
 # source("01_code/10_model_random_forest.R")
-# source("01_code/11_model_boosting.R")
+source("01_code/11_model_boosting.R")
 # source("01_code/12_model_neural_network.R")
 
 # Bloque C: análisis para las presentaciones -------------------------------
