@@ -67,7 +67,8 @@ source("01_code/05_create_cv_folds.R")
 # source("01_code/08_model_elastic_net.R")
 # source("01_code/09_model_cart.R")
 # source("01_code/10_model_random_forest.R")
-source("01_code/11_model_boosting.R")
+# Desactivado temporalmente: se actualiza a los conjuntos del 06.
+# source("01_code/11_model_boosting.R")
 # source("01_code/12_model_neural_network.R")
 
 # Bloque C: análisis para las presentaciones -------------------------------
