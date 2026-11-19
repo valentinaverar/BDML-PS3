@@ -1,97 +1,213 @@
 ##########################################################
 # 04_build_text_features.R
 #
-# Objetivo: crear variables a partir del titulo y la descripcion.
+# Objetivo: construir predictores a partir de la descripción de cada
+# anuncio (requisito: al menos cuatro), con el método de la clase de texto
+# como datos (Lecture 15): limpieza, bolsa de palabras (bag of words),
+# stemming y matriz documento-término.
+#
+# Etapa del Problem Set: Etapa 1: Understanding and Expanding the Data.
 # Insumos:  03_temp/train_geo.rds y 03_temp/test_geo.rds.
 # Salidas:  03_temp/train_features.rds y 03_temp/test_features.rds.
+#           03_temp/vocabulario_texto.rds: raíces de cada conjunto de
+#           predictores (lo usa 06_build_model_data.R).
 #
-# Se mantienen los ocho indicadores originales y se agregan:
-#   txt_balcon, txt_terraza, txt_antiguedad_anios.
-# txt_parqueadero ya existia.
+# Variables generadas:
+#   - raiz_<raíz>: 1 si la descripción usa alguna palabra con esa raíz y 0
+#     si no (p. ej. raiz_chimene, raiz_parqueader, raiz_remodel). Se crean
+#     para las raíces presentes en al menos el 1% de los anuncios.
+#   - txt_area_m2: área en m² mencionada en la descripción.
+#   - txt_banos, txt_parqueaderos, txt_piso: número de baños, de
+#     parqueaderos y piso mencionados en la descripción.
+#   Las cuatro numéricas valen NA si la descripción no las menciona.
+#
+# Decisiones:
+#   - Solo se usa la descripción (recomendación del profesor): el título
+#     es corto (mediana de 5 palabras) y repite la descripción.
+#   - Limpieza: minúsculas, sin tildes, sin números ni signos, y se
+#     corrigen restos de HTML de la fuente ("ba ntilde o" -> "bano") y
+#     palabras que perdieron la ñ o la tilde ("bao" -> "bano",
+#     "habitacin" -> "habitacion").
+#   - Se eliminan las negaciones directas ("sin ascensor", "no tiene
+#     parqueadero ni garaje") antes de contar palabras, para no marcar
+#     como presente lo que el anuncio dice que no tiene.
+#   - Stemming con el algoritmo Snowball para español (SnowballC), que
+#     junta género y número (remodelado, remodelada -> remodel). Como el
+#     texto viene sin tildes, las palabras en "-cion" se pasan al plural
+#     antes del stemming para que singular y plural den la misma raíz
+#     (habitacion y habitaciones -> habit).
+#   - Se quitan las stopwords del español (lista Snowball) y las palabras
+#     de dos letras o menos.
+#   - Indicadores (1/0) en lugar de conteos o TF-IDF, como en Gentzkow y
+#     Shapiro (2010, Lecture 15): mencionar algo importa más que cuántas
+#     veces. En una prueba, 149 indicadores de raíz predijeron log(precio)
+#     mucho mejor que 30 componentes de PCA sobre TF-IDF (R² fuera de
+#     muestra 0,32 frente a 0,15).
+#   - El vocabulario (raíces en al menos 1% o 5% de los anuncios) se
+#     calcula con train y test juntos. No usa el precio, así que no filtra
+#     información de la variable a predecir.
+#   - Las cantidades se extraen con reglas de plausibilidad (p. ej. área
+#     entre 20 y 2.000 m², sin tomar "terraza de 30 m" ni "a 300 metros").
+#     Donde la base trae la superficie construida, el área extraída
+#     coincide con ella (±10%) en el 85% de los casos.
 ##########################################################
+
+# Objetos que ya existían en el entorno antes de correr este script. Al
+# final se borra solo lo que este script creó, sin tocar lo demás.
 objetos_previos <- ls()
 
 # Paquetes ----------------------------------------------------------------
 if (!require(pacman)) install.packages("pacman")
-pacman::p_load(stringr, stringi)
+pacman::p_load(dplyr, stringr, stringi, tidytext, SnowballC, stopwords)
 
-# Cargar datos ------------------------------------------------------------
+# Parámetros ---------------------------------------------------------------
+# Porcentaje mínimo de anuncios en los que debe aparecer una raíz para
+# entrar a cada conjunto de predictores (ver 06_build_model_data.R).
+umbral_completo <- 5
+umbral_ampliado <- 1
+
+# Cargar datos -------------------------------------------------------------
 dir_temp <- "03_temp"
 train <- readRDS(file.path(dir_temp, "train_geo.rds"))
 test  <- readRDS(file.path(dir_temp, "test_geo.rds"))
 
-# Patrones: 1 si se menciona la caracteristica, 0 si no --------------------
-patrones <- c(
-  txt_balcon_terraza = "\\b(?:balcon(?:es)?|terraza(?:s)?)\\b",
-  txt_balcon = "\\b(?:balcon(?:es)?)\\b",
-  txt_terraza = "\\b(?:terraza(?:s)?)\\b",
-  txt_remodelado = "\\b(?:remodelad[oa]s?|renovad[oa]s?|reformad[oa]s?|restaurad[oa]s?)\\b",
-  txt_vista = "\\b(?:vista\\s+(?:panoramica|a la ciudad|exterior|espectacular|privilegiada|abierta)|excelente\\s+vista|hermosa\\s+vista)\\b",
-  txt_seguridad = "\\b(?:vigilancia|porteria|conjunto cerrado|seguridad 24|control de acceso|recepcion 24)\\b",
-  txt_iluminacion = "\\b(?:iluminacion natural|luz natural|muy iluminad[oa]|bien iluminad[oa]|ventanal(?:es)?|grandes ventanas)\\b",
-  txt_amenidades = "\\b(?:gimnasio|gym|piscina|sauna|jacuzzi|coworking|co working|salon social|zona bbq|cancha de tenis|cancha de squash|turco)\\b",
-  txt_parqueadero = "\\b(?:parqueader[oa]s?|garajes?|estacionamientos?)\\b",
-  txt_ascensor = "\\b(?:ascensor(?:es)?|elevador(?:es)?)\\b"
+# 1. Limpieza del texto -----------------------------------------------------
+# Palabras que en la fuente perdieron la ñ o la vocal con tilde.
+correcciones <- c(
+  "\\bbaos\\b" = "banos", "\\bbao\\b" = "bano", "\\bsaln\\b" = "salon",
+  "\\bbalcn\\b" = "balcon",
+  "\\brea\\b" = "area", "\\baos\\b" = "anos", "\\bnios\\b" = "ninos",
+  "\\bjardn\\b" = "jardin", "\\bdiseo\\b" = "diseno",
+  "\\bpequeo\\b" = "pequeno", "\\btambin\\b" = "tambien",
+  "cin\\b" = "cion"
 )
 
-# Quitar negaciones directas antes de buscar menciones positivas ----------
+fun_limpiar_texto <- function(.texto) {
+  x <- stri_trans_general(tolower(coalesce(.texto, "")), "Latin-ASCII")
+  # Restos de HTML: "am eacute ricas" -> "americas", "ba ntilde o" -> "bano".
+  x <- str_replace_all(x, "\\s?([aeiou])(acute|grave|uml|circ)\\s?", "\\1")
+  x <- str_replace_all(x, "\\s?ntilde\\s?", "n")
+  x <- str_replace_all(x, "\\b(nbsp|amp|quot|br|b)\\b", " ")
+  x <- str_replace_all(x, "[^a-z0-9]+", " ")
+  x <- str_replace_all(x, correcciones)
+  str_squish(x)
+}
+
+# 2. Negaciones directas ---------------------------------------------------
+# No pretende resolver todas las negaciones del lenguaje natural.
 negables <- paste0(
-  "(?:balcon(?:es)?|terraza(?:s)?|vigilancia|porteria|gimnasio|piscina|",
+  "(?:balcon(?:es)?|terrazas?|vigilancia|porteria|gimnasio|piscina|",
   "sauna|jacuzzi|parqueader[oa]s?|garajes?|estacionamientos?|",
-  "ascensor(?:es)?|elevador(?:es)?)"
+  "ascensor(?:es)?|elevador(?:es)?|chimenea|estudio|deposito)"
 )
 patron_negacion <- paste0(
-  "\\b(?:sin|no tiene|no cuenta con|no incluye|carece de|no dispone de|no hay)\\s+",
-  "(?:(?:un|una|de)\\s+)?", negables,
+  "\\b(?:sin|no tiene|no cuenta con|no incluye|carece de|no dispone de|",
+  "no hay)\\s+(?:(?:un|una|de)\\s+)?", negables,
   "(?:\\s+(?:ni|o|y)\\s+", negables, ")*\\b"
 )
 
-# Construir variables -----------------------------------------------------
-fun_features_texto <- function(datos) {
-  titulo <- ifelse(is.na(datos$title), "", datos$title)
-  descripcion <- ifelse(is.na(datos$description), "", datos$description)
-  
-  texto <- paste(titulo, descripcion)
-  texto <- stringi::stri_trans_general(tolower(texto), "Latin-ASCII")
-  texto <- stringr::str_squish(stringr::str_replace_all(texto, "[^a-z0-9]+", " "))
-  texto <- stringr::str_replace_all(texto, patron_negacion, " ")
-  
-  nuevas <- as.data.frame(lapply(patrones, function(patron) {
-    as.integer(stringr::str_detect(texto, patron))
-  }))
-  names(nuevas) <- names(patrones)
-  
-  # Antiguedad explicita: "10 anos de antiguedad", "antiguedad de 10 anos"
-  # o "construido hace 10 anos". "Para estrenar" equivale a 0.
-  edad1 <- stringr::str_match(texto,
-                              "\\b(?:antiguedad\\s*(?:de\\s*)?|construid[oa]\\s+hace\\s*)(\\d{1,3})\\s*anos?\\b")[, 2]
-  edad2 <- stringr::str_match(texto,
-                              "\\b(\\d{1,3})\\s*anos?\\s*(?:de\\s*)?antiguedad\\b")[, 2]
-  edad <- as.integer(ifelse(!is.na(edad1), edad1, edad2))
-  edad[is.na(edad) & stringr::str_detect(texto, "\\b(?:para|a) estrenar\\b")] <- 0L
-  nuevas$txt_antiguedad_anios <- edad
-  
-  cbind(datos, nuevas)
+# 3. Cantidades mencionadas en el texto -------------------------------------
+numeros_palabra <- c("\\bun\\b" = "1", "\\buna\\b" = "1", "\\buno\\b" = "1",
+                     "\\bdos\\b" = "2", "\\btres\\b" = "3",
+                     "\\bcuatro\\b" = "4", "\\bcinco\\b" = "5",
+                     "\\bseis\\b" = "6")
+unidad_area <- paste0("(?:m2|mt2|mts2|mtr2|mtrs2|m 2|mts 2|metros cuadrados|",
+                      "metros2|mts|mtrs|metros|mt)")
+patron_area <- paste0("\\b(\\d{2,4})\\s?", unidad_area, "\\b")
+# Contextos en los que el número no es el área de la vivienda.
+contexto_excluido <- paste0(
+  "\\b(?:terraz\\w*|balcon\\w*|patio\\w*|deposito\\w*|jardin\\w*|a|",
+  "a unos|a solo|a tan solo)\\s*(?:de\\s*)?(?:aprox\\w*\\s*)?$"
+)
+
+fun_area <- function(.x) {
+  pos <- str_locate_all(.x, patron_area)[[1]]
+  for (k in seq_len(nrow(pos))) {
+    antes <- substr(.x, max(1, pos[k, 1] - 30), pos[k, 1] - 1)
+    if (str_detect(antes, contexto_excluido)) next
+    valor <- as.numeric(str_match(substr(.x, pos[k, 1], pos[k, 2]),
+                                  patron_area)[, 2])
+    if (valor >= 20 && valor <= 2000) return(valor)
+  }
+  NA_real_
 }
 
-train_features <- fun_features_texto(train)
-test_features <- fun_features_texto(test)
+fun_numero <- function(.x, .patron, .min, .max) {
+  valor <- as.numeric(str_match(.x, .patron)[, 2])
+  valor[valor < .min | valor > .max] <- NA
+  valor
+}
 
-# Guardar y diagnosticar --------------------------------------------------
+# 4. Construir las variables -----------------------------------------------
+datos <- bind_rows(train = train, test = test, .id = "base")
+datos$doc <- seq_len(nrow(datos))
+texto <- fun_limpiar_texto(datos$description)
+texto <- str_replace_all(texto, patron_negacion, " ")
+
+# Cantidades: se convierten "dos", "tres"... a dígitos.
+texto_num <- str_replace_all(texto, numeros_palabra)
+datos$txt_area_m2 <- vapply(texto_num, fun_area, numeric(1),
+                            USE.NAMES = FALSE)
+datos$txt_banos <- fun_numero(texto_num, "\\b(\\d)\\s?banos?\\b", 1, 8)
+datos$txt_parqueaderos <- fun_numero(
+  texto_num, "\\b(\\d)\\s?(?:parqueaderos?|garajes?|estacionamientos?)\\b",
+  1, 6)
+datos$txt_piso <- coalesce(
+  fun_numero(texto_num, "\\bpiso\\s?(\\d{1,2})\\b", 1, 40),
+  fun_numero(texto_num, "\\b(\\d{1,2})\\s?piso\\b", 1, 40)
+)
+
+# Bolsa de palabras: tokens, sin números, stopwords ni palabras cortas;
+# "-cion" al plural para que el stemming junte singular y plural.
+tokens <- tibble(doc = datos$doc, texto = texto) |>
+  unnest_tokens(palabra, texto) |>
+  filter(!str_detect(palabra, "^[0-9]+$"), nchar(palabra) > 2,
+         !palabra %in% stopwords::stopwords("es", source = "snowball")) |>
+  mutate(palabra = str_replace(palabra, "cion$", "ciones"),
+         raiz = wordStem(palabra, language = "spanish")) |>
+  distinct(doc, raiz)
+
+# Frecuencia de cada raíz: porcentaje de anuncios que la usan.
+frecuencia <- tokens |>
+  count(raiz, name = "n_anuncios") |>
+  mutate(pct_anuncios = 100 * n_anuncios / nrow(datos)) |>
+  arrange(desc(n_anuncios))
+
+vocabulario <- frecuencia$raiz[frecuencia$pct_anuncios >= umbral_ampliado]
+
+# Indicadores 1/0 por raíz (matriz documento-término binaria).
+indicadores <- matrix(0L, nrow = nrow(datos), ncol = length(vocabulario),
+                      dimnames = list(NULL, paste0("raiz_", vocabulario)))
+presentes <- tokens |> filter(raiz %in% vocabulario)
+indicadores[cbind(presentes$doc, match(presentes$raiz, vocabulario))] <- 1L
+datos <- bind_cols(datos, as.data.frame(indicadores))
+
+# Vocabulario de cada conjunto, para 06_build_model_data.R.
+vocabulario_texto <- list(
+  completo = paste0("raiz_", frecuencia$raiz[
+    frecuencia$pct_anuncios >= umbral_completo]),
+  ampliado = paste0("raiz_", vocabulario),
+  frecuencia = frecuencia
+)
+
+# 5. Guardar y diagnosticar -------------------------------------------------
+train_features <- datos |> filter(base == "train") |> select(-base, -doc)
+test_features  <- datos |> filter(base == "test") |> select(-base, -doc)
 saveRDS(train_features, file.path(dir_temp, "train_features.rds"))
 saveRDS(test_features, file.path(dir_temp, "test_features.rds"))
+saveRDS(vocabulario_texto, file.path(dir_temp, "vocabulario_texto.rds"))
 
-variables <- names(patrones)
-diagnostico <- data.frame(
-  variable = variables,
-  train_pct = round(100 * colMeans(train_features[variables]), 2),
-  test_pct = round(100 * colMeans(test_features[variables]), 2)
-)
-print(diagnostico, row.names = FALSE)
-message("Cobertura de antiguedad: train ",
-        round(mean(!is.na(train_features$txt_antiguedad_anios)) * 100, 1),
-        "%, test ", round(mean(!is.na(test_features$txt_antiguedad_anios)) * 100, 1), "%")
-message("Guardados: 03_temp/train_features.rds y 03_temp/test_features.rds")
+message("Raíces con indicador: ", length(vocabulario),
+        " (en >= ", umbral_ampliado, "% de anuncios); de ellas ",
+        length(vocabulario_texto$completo), " en >= ", umbral_completo, "%.")
+variables_num <- c("txt_area_m2", "txt_banos", "txt_parqueaderos", "txt_piso")
+print(data.frame(
+  variable = variables_num,
+  pct_con_dato_train = round(100 * colMeans(!is.na(train_features[variables_num])), 1),
+  pct_con_dato_test = round(100 * colMeans(!is.na(test_features[variables_num])), 1)
+), row.names = FALSE)
+message("Guardados: 03_temp/train_features.rds, test_features.rds y ",
+        "vocabulario_texto.rds")
 
+# Limpiamos el entorno: borramos solo los objetos que creó este script.
 rm(list = setdiff(ls(), objetos_previos))
-
