@@ -58,7 +58,7 @@ source("01_code/05_create_cv_folds.R")
 
 # Imputación de faltantes y conjuntos de predictores (base, completo y
 # ampliado).
-# source("01_code/06_build_model_data.R")
+source("01_code/06_build_model_data.R")
 
 # Bloque B: modelos (Etapa 2; cada script genera sus envíos a Kaggle) -----
 # Cada script puede correrse solo, una vez corridos los scripts 01 a 06.
