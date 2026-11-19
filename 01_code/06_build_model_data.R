@@ -13,6 +13,8 @@
 #           03_temp/conjuntos_predictores.rds: lista con los nombres de las
 #           variables de cada conjunto (base, completo y ampliado) y las
 #           rutas de la matriz TF-IDF que se suma en el conjunto ampliado.
+#           02_outputs/tables/conjuntos_predictores.tex (y .csv): número de
+#           predictores de cada bloque en cada conjunto, para las slides.
 #
 # Conjuntos de predictores:
 #   - base (17): solo la información que trae Kaggle (características de
@@ -56,7 +58,7 @@ objetos_previos <- ls()
 
 # Paquetes ----------------------------------------------------------------
 if (!require(pacman)) install.packages("pacman")
-pacman::p_load(dplyr, Matrix)
+pacman::p_load(dplyr, Matrix, knitr)
 
 # Cargar datos -------------------------------------------------------------
 train <- readRDS("03_temp/train_features.rds")
@@ -178,7 +180,8 @@ conjuntos_predictores <- list(
 conjuntos_predictores$ampliado <- conjuntos_predictores$completo
 
 # Verificación: la matriz TF-IDF debe tener las mismas filas que las bases.
-filas_tfidf <- c(nrow(readRDS(conjuntos_predictores$tfidf_ampliado["train"])),
+tfidf_train <- readRDS(conjuntos_predictores$tfidf_ampliado["train"])
+filas_tfidf <- c(nrow(tfidf_train),
                  nrow(readRDS(conjuntos_predictores$tfidf_ampliado["test"])))
 if (!identical(filas_tfidf, c(nrow(train), nrow(test)))) {
   stop("La matriz TF-IDF no tiene las mismas filas que train/test. ",
@@ -193,6 +196,62 @@ if (any(na_restantes > 0)) {
   stop("Quedaron faltantes en: ",
        paste(unique(names(na_restantes)[na_restantes > 0]), collapse = ", "))
 }
+
+# 5. Tabla de conjuntos para las slides -------------------------------------
+# Cuenta cuántos predictores de cada bloque tiene cada conjunto. Los números
+# salen de conjuntos_predictores, así que se actualizan solos si cambia algo.
+fun_bloque <- function(.vars) {
+  case_when(
+    startsWith(.vars, "raiz_") ~ "Texto: raíces",
+    .vars %in% vars_texto_cantidades ~ "Texto: cantidades",
+    .vars %in% vars_externas ~ "Ubicación y entorno",
+    .vars %in% c(vars_calidad, "superficie_desde_texto") |
+      startsWith(.vars, "falta_") ~ "Calidad del dato",
+    TRUE ~ "Vivienda"
+  )
+}
+bloques <- tibble(
+  Bloque = c("Vivienda", "Calidad del dato", "Ubicación y entorno",
+             "Texto: cantidades", "Texto: raíces", "Texto: TF-IDF"),
+  Contenido = c(
+    "Superficie, baños, ambientes, habitaciones, tipo, coordenadas, fecha",
+    "Indicadores de superficie problemática y de dato imputado",
+    "Estrato, distancia al empleo, TransMilenio, vías, servicios, verde, pendiente",
+    "Parqueaderos y piso mencionados en la descripción",
+    "Raíces presentes en al menos 5% de los anuncios",
+    "Unigramas y bigramas de la descripción"
+  )
+)
+fun_contar <- function(.vars) {
+  as.integer(table(factor(fun_bloque(.vars), levels = bloques$Bloque)))
+}
+tabla_conjuntos <- bloques |>
+  mutate(
+    Base = fun_contar(conjuntos_predictores$base),
+    Completo = fun_contar(conjuntos_predictores$completo),
+    Ampliado = fun_contar(conjuntos_predictores$ampliado) +
+      if_else(Bloque == "Texto: TF-IDF", ncol(tfidf_train), 0L)
+  )
+tabla_conjuntos <- bind_rows(
+  tabla_conjuntos,
+  tibble(Bloque = "Total", Contenido = "",
+         Base = sum(tabla_conjuntos$Base),
+         Completo = sum(tabla_conjuntos$Completo),
+         Ampliado = sum(tabla_conjuntos$Ampliado))
+)
+
+dir.create("02_outputs/tables", recursive = TRUE, showWarnings = FALSE)
+write.csv(tabla_conjuntos, "02_outputs/tables/conjuntos_predictores.csv",
+          row.names = FALSE)
+fun_formato <- function(.x) {
+  if_else(.x == 0, "---", format(.x, big.mark = ".", decimal.mark = ",",
+                                 trim = TRUE))
+}
+writeLines(kable(tabla_conjuntos |>
+                   mutate(across(c(Base, Completo, Ampliado), fun_formato)),
+                 format = "latex", booktabs = TRUE, linesep = "",
+                 align = c("l", "l", "r", "r", "r")),
+           "02_outputs/tables/conjuntos_predictores.tex")
 
 # Guardar ------------------------------------------------------------------
 saveRDS(train, "03_temp/train_model.rds")
