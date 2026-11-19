@@ -9,7 +9,7 @@
 # Salidas:  03_temp/train_geo.rds y 03_temp/test_geo.rds.
 #           Descargas guardadas en 03_temp/geo_cache/ para no repetirlas.
 #
-# Variables generadas (9) y su fuente:
+# Variables generadas (10) y su fuente:
 #   - dist_transmilenio_m: distancia a la estación troncal más cercana
 #     (capa oficial de IDECA, Catastro Bogotá).
 #   - dist_via_principal_m, dist_centro_comercial_m, dist_parque_m,
@@ -23,6 +23,8 @@
 #   - estrato_manzana: estrato socioeconómico oficial de la manzana donde
 #     está la propiedad (Secretaría Distrital de Planeación, portal Datos
 #     Abiertos Bogotá). NA si el punto no cae en una manzana estratificada.
+#   - dist_centro_empleo_m: distancia al centro de empleo más cercano
+#     (Centro Internacional, calle 72 o calle 93; coordenadas aproximadas).
 #
 # Decisiones:
 #   - Las distancias son en línea recta, no por la red de calles.
@@ -295,6 +297,49 @@ if (forzar_recalculo || !"estrato_manzana" %in% names(train_geo) ||
           round(100 * mean(!is.na(test_geo$estrato_manzana)), 1), "%.")
 } else {
   message("estrato_manzana ya existe. No se recalcula.")
+}
+
+# 7. Distancia al centro de empleo más cercano ---------------------------
+# Se agrega sobre los RDS existentes, sin recalcular lo anterior. Bogotá
+# tiene varios centros de oficinas (ciudad policéntrica); en el modelo
+# monocéntrico de economía urbana, el precio cae con la distancia al
+# empleo. Coordenadas aproximadas de tres centros de oficinas.
+train_geo <- readRDS(salida_train)
+test_geo <- readRDS(salida_test)
+
+if (forzar_recalculo || !"dist_centro_empleo_m" %in% names(train_geo) ||
+    !"dist_centro_empleo_m" %in% names(test_geo)) {
+  
+  centros_empleo <- data.frame(
+    centro = c("Centro Internacional", "Calle 72", "Calle 93"),
+    lon = c(-74.0705, -74.0560, -74.0482),
+    lat = c(4.6145, 4.6577, 4.6765)
+  )
+  centros <- sf::st_transform(
+    sf::st_as_sf(centros_empleo, coords = c("lon", "lat"), crs = 4326), crs_m)
+  
+  # Cálculo una sola vez por ubicación única de train y test.
+  ubicaciones <- unique(rbind(train_geo[c("lon", "lat")],
+                              test_geo[c("lon", "lat")]))
+  puntos_u <- sf::st_transform(
+    sf::st_as_sf(ubicaciones, coords = c("lon", "lat"), crs = 4326), crs_m)
+  distancia_centros <- sf::st_distance(puntos_u, centros)
+  dist_centro_empleo <- apply(matrix(as.numeric(distancia_centros),
+                                     ncol = nrow(centros)), 1, min)
+  
+  clave <- function(x) paste(x$lon, x$lat, sep = "|")
+  train_geo$dist_centro_empleo_m <- dist_centro_empleo[
+    match(clave(train_geo), clave(ubicaciones))]
+  test_geo$dist_centro_empleo_m <- dist_centro_empleo[
+    match(clave(test_geo), clave(ubicaciones))]
+  
+  saveRDS(train_geo, salida_train)
+  saveRDS(test_geo, salida_test)
+  message("Distancia al centro de empleo agregada. Mediana: train = ",
+          round(median(train_geo$dist_centro_empleo_m)), " m; test = ",
+          round(median(test_geo$dist_centro_empleo_m)), " m.")
+} else {
+  message("dist_centro_empleo_m ya existe. No se recalcula.")
 }
 
 # Limpiamos el entorno: borramos solo los objetos que creó este script.
