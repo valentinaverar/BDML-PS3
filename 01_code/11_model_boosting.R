@@ -1,8 +1,43 @@
 ##########################################################
-# 11_model_boosting_nocturno.R - LightGBM (Metrocuadrado)
-# Ejecutar desde la raiz de BDML-PS3.
-# LGBM_SOLO_VERIFICAR=1 ejecuta una CV y un ajuste cortos sin escribir resultados.
+# 11_model_boosting.R
+#
+# Objetivo: entrenar un modelo de la familia Boosting (LightGBM) para
+# predecir el precio de las viviendas y generar su envío a Kaggle.
+#
+# Etapa del Problem Set: Etapa 2: Training and Comparing Algorithms.
+# Insumos:  03_temp/train_features.rds, 03_temp/test_features.rds,
+#           03_temp/cv_folds.rds (script 05) y la plantilla de Kaggle.
+# Salidas:  02_outputs/predictions/<nombre>.csv (envío a Kaggle).
+#           02_outputs/tables/LGBM_metrocuadrado_ensayos.csv (todos los
+#           ensayos de hiperparámetros y su MAE en CV espacial).
+#           02_outputs/tables/LGBM_metrocuadrado_importancia.csv.
+#           Fila en 02_outputs/tables/registro_modelos.csv por cada tipo
+#           de CV (espacial y aleatoria).
+#           03_temp/: configuración y modelo final.
+#
+# Decisiones:
+#   - LightGBM: implementación de boosting de árboles que optimiza
+#     directamente el error absoluto (objective = "regression_l1"), la
+#     misma métrica de Kaggle, y maneja los valores faltantes sin imputar.
+#   - Hiperparámetros elegidos con CV espacial (decisión del equipo): es la
+#     que se parece al problema de predecir en una zona no vista.
+#   - Búsqueda: optimización bayesiana (25 puntos iniciales + 125
+#     iteraciones); si falla, búsqueda aleatoria con los mismos límites.
+#   - La búsqueda tarda horas. Por eso, si ya existe la tabla de ensayos y
+#     buscar_hiperparametros es FALSE, se reutiliza el mejor ensayo guardado
+#     y solo se reentrena el modelo final (reproducible en minutos).
+#
+# Uso: LGBM_SOLO_VERIFICAR=1 ejecuta una CV y un ajuste cortos sin escribir
+# resultados (prueba rápida de que todo funciona).
 ##########################################################
+
+# Objetos que ya existían en el entorno antes de correr este script. Al
+# final se borra solo lo que este script creó, sin tocar lo demás.
+objetos_previos <- ls()
+
+# TRUE: repite la búsqueda de hiperparámetros (tarda horas).
+# FALSE: usa el mejor ensayo de la tabla guardada, si existe.
+buscar_hiperparametros <- FALSE
 
 local({
   fallar <- function(...) stop(..., call. = FALSE)
@@ -218,21 +253,18 @@ local({
         fallar("No se puede escribir en ", ruta, ": ", conditionMessage(e))
       })
     }
+    reutilizar <- !buscar_hiperparametros && file.exists(ruta_ensayos)
+    if (reutilizar) {
+      message("Se reutilizan los hiperparámetros de ", ruta_ensayos,
+              " (buscar_hiperparametros = FALSE).")
+    }
     if (file.exists(ruta_registro)) {
       campos <- names(utils::read.csv(ruta_registro, nrows = 1L))
       if (!all(c("archivo", "tipo_cv") %in% campos)) {
         fallar("El registro de modelos existente no tiene archivo y tipo_cv.")
       }
     }
-    if (file.exists(ruta_ensayos)) {
-      respaldo <- tempfile("LGBM_metrocuadrado_ensayos_anterior_",
-                           tmpdir = dirname(ruta_ensayos), fileext = ".csv")
-      if (!file.rename(ruta_ensayos, respaldo)) {
-        fallar("Cierre el CSV de ensayos anterior para poder iniciar otra corrida.")
-      }
-      message("Ensayos anteriores: ", respaldo)
-    }
-    
+    # Límites de búsqueda de cada hiperparámetro.
     limites <- list(
       log_lr = log(c(0.008, 0.12)),
       num_leaves = c(15L, 127L),
@@ -243,70 +275,91 @@ local({
       log_l1 = log1p(c(0, 20)),
       log_l2 = log1p(c(0, 20))
     )
-    puntos_iniciales <- if (prueba_interna) 10L else 25L
-    iteraciones_bayes <- if (prueba_interna) 1L else 125L
-    max_rondas <- if (prueba_interna) 30L else 4000L
-    paciencia <- if (prueba_interna) 10L else 100L
-    total_ensayos <- puntos_iniciales + iteraciones_bayes
-    n_ensayos <- 0L
-    error_ensayo <- FALSE
     
-    puntuar <- function(log_lr, num_leaves, max_depth, min_data_in_leaf,
-                        feature_fraction, bagging_fraction, log_l1, log_l2) {
-      ronda_ensayo <- n_ensayos + 1L
-      message("Ensayo ", ronda_ensayo, "/", total_ensayos)
-      inicio <- proc.time()[["elapsed"]]
-      withCallingHandlers({
-        params <- armar_params(log_lr, num_leaves, max_depth, min_data_in_leaf,
-                               feature_fraction, bagging_fraction, log_l1, log_l2)
-        cv <- ejecutar_cv(params, max_rondas, paciencia)
-        fila <- data.frame(
-          mae = cv$mae, iteraciones = cv$ronda,
-          log_lr = log_lr, num_leaves = num_leaves, max_depth = max_depth,
-          min_data_in_leaf = min_data_in_leaf, feature_fraction = feature_fraction,
-          bagging_fraction = bagging_fraction, log_l1 = log_l1, log_l2 = log_l2
-        )
-        utils::write.table(fila, ruta_ensayos, sep = ",", row.names = FALSE,
-                           col.names = n_ensayos == 0L, append = n_ensayos > 0L)
-        n_ensayos <<- ronda_ensayo
-        message("MAE espacial: $", round(cv$mae), " | rondas: ", cv$ronda,
-                " | segundos: ", round(proc.time()[["elapsed"]] - inicio, 1L))
-        list(Score = -cv$mae / 1e6, Pred = 0)
-      }, error = function(e) error_ensayo <<- TRUE)
-    }
-    
-    error_bayes <- error_lhs
-    if (is.null(error_bayes)) {
-      error_bayes <- tryCatch({
-        rBayesianOptimization::BayesianOptimization(
-          FUN = puntuar, bounds = limites, init_points = puntos_iniciales,
-          n_iter = iteraciones_bayes, acq = "ei", verbose = TRUE
-        )
-        NULL
-      }, error = function(e) {
-        if (error_ensayo) stop(e)
-        conditionMessage(e)
-      })
-    }
-    if (!is.null(error_bayes)) {
-      message("Busqueda aleatoria para completar ", total_ensayos - n_ensayos,
-              " ensayos. Motivo: ", error_bayes)
-      while (n_ensayos < total_ensayos) {
-        candidato <- lapply(limites, function(limite) {
-          if (is.integer(limite)) {
-            return(limite[1L] - 1L + sample.int(diff(limite) + 1L, 1L))
-          }
-          stats::runif(1L, limite[1L], limite[2L])
-        })
-        do.call(puntuar, candidato)
+    error_bayes <- NULL
+    if (!reutilizar) {
+      if (file.exists(ruta_ensayos)) {
+        respaldo <- tempfile("LGBM_metrocuadrado_ensayos_anterior_",
+                             tmpdir = dirname(ruta_ensayos), fileext = ".csv")
+        if (!file.rename(ruta_ensayos, respaldo)) {
+          fallar("Cierre el CSV de ensayos anterior para poder iniciar otra corrida.")
+        }
+        message("Ensayos anteriores: ", respaldo)
       }
+      
+      puntos_iniciales <- if (prueba_interna) 10L else 25L
+      iteraciones_bayes <- if (prueba_interna) 1L else 125L
+      max_rondas <- if (prueba_interna) 30L else 4000L
+      paciencia <- if (prueba_interna) 10L else 100L
+      total_ensayos <- puntos_iniciales + iteraciones_bayes
+      n_ensayos <- 0L
+      error_ensayo <- FALSE
+      
+      puntuar <- function(log_lr, num_leaves, max_depth, min_data_in_leaf,
+                          feature_fraction, bagging_fraction, log_l1, log_l2) {
+        ronda_ensayo <- n_ensayos + 1L
+        message("Ensayo ", ronda_ensayo, "/", total_ensayos)
+        inicio <- proc.time()[["elapsed"]]
+        withCallingHandlers({
+          params <- armar_params(log_lr, num_leaves, max_depth, min_data_in_leaf,
+                                 feature_fraction, bagging_fraction, log_l1, log_l2)
+          cv <- ejecutar_cv(params, max_rondas, paciencia)
+          fila <- data.frame(
+            mae = cv$mae, iteraciones = cv$ronda,
+            log_lr = log_lr, num_leaves = num_leaves, max_depth = max_depth,
+            min_data_in_leaf = min_data_in_leaf, feature_fraction = feature_fraction,
+            bagging_fraction = bagging_fraction, log_l1 = log_l1, log_l2 = log_l2
+          )
+          utils::write.table(fila, ruta_ensayos, sep = ",", row.names = FALSE,
+                             col.names = n_ensayos == 0L, append = n_ensayos > 0L)
+          n_ensayos <<- ronda_ensayo
+          message("MAE espacial: $", round(cv$mae), " | rondas: ", cv$ronda,
+                  " | segundos: ", round(proc.time()[["elapsed"]] - inicio, 1L))
+          list(Score = -cv$mae / 1e6, Pred = 0)
+        }, error = function(e) error_ensayo <<- TRUE)
+      }
+      
+      error_bayes <- error_lhs
+      if (is.null(error_bayes)) {
+        error_bayes <- tryCatch({
+          rBayesianOptimization::BayesianOptimization(
+            FUN = puntuar, bounds = limites, init_points = puntos_iniciales,
+            n_iter = iteraciones_bayes, acq = "ei", verbose = TRUE
+          )
+          NULL
+        }, error = function(e) {
+          if (error_ensayo) stop(e)
+          conditionMessage(e)
+        })
+      }
+      if (!is.null(error_bayes)) {
+        message("Busqueda aleatoria para completar ", total_ensayos - n_ensayos,
+                " ensayos. Motivo: ", error_bayes)
+        while (n_ensayos < total_ensayos) {
+          candidato <- lapply(limites, function(limite) {
+            if (is.integer(limite)) {
+              return(limite[1L] - 1L + sample.int(diff(limite) + 1L, 1L))
+            }
+            stats::runif(1L, limite[1L], limite[2L])
+          })
+          do.call(puntuar, candidato)
+        }
+      }
+      
     }
     
     ensayos <- utils::read.csv(ruta_ensayos)
+    if (reutilizar) n_ensayos <- nrow(ensayos)
     b <- ensayos[which.min(ensayos$mae), ]
     mejores <- do.call(armar_params, as.list(b[names(limites)]))
     rondas <- as.integer(b$iteraciones)
-    busqueda <- if (is.null(error_bayes)) "Bayes espacial" else "CV espacial con respaldo aleatorio"
+    busqueda <- if (reutilizar) {
+      "Ensayos guardados (CV espacial)"
+    } else if (is.null(error_bayes)) {
+      "Bayes espacial"
+    } else {
+      "CV espacial con respaldo aleatorio"
+    }
     message("Mejor MAE espacial: $", round(b$mae), " | rondas: ", rondas)
     saveRDS(list(params = mejores, rondas = rondas, variables = variables,
                  niveles_property_type = niveles, ensayos = n_ensayos,
@@ -349,4 +402,5 @@ local({
   }
 })
 
+# Limpiamos el entorno: borramos solo los objetos que creó este script.
 rm(list = setdiff(ls(), objetos_previos))
