@@ -1,17 +1,32 @@
 ##########################################################
-# 06_create_cv_folds.R
+# 05_create_cv_folds.R
 #
-# Objetivo: crear folds de validacion cruzada compartidos por
-# todos los modelos: aleatorios (por rangos de precio) y
-# espaciales (zonas geograficas completas).
+# Objetivo: crear las particiones de validación cruzada que comparten
+# todos los modelos (common ground): una aleatoria y una espacial.
 #
-# Entrada: 03_temp/train_features.rds
-# Salida:  03_temp/cv_folds.rds
+# Etapa del Problem Set: Etapa 2 (elegir hiperparámetros con CV espacial)
+# y Etapa 3 (comparar CV espacial frente a CV aleatoria).
+# Insumos:  03_temp/train_features.rds.
+# Salidas:  03_temp/cv_folds.rds: lista con los índices de VALIDACIÓN de
+#           cada fold (aleatoria y espacial), en el mismo orden de filas de
+#           train_features.rds. Sirve tal cual para lightgbm::lgb.cv() y,
+#           con su complemento, para trainControl(index = ...) de caret.
 #
-# Cada fold contiene los INDICES DE VALIDACION, en el mismo
-# orden de filas que train_features.rds. Este formato se puede
-# pasar directamente al argumento 'folds' de lightgbm::lgb.cv().
+# Decisiones:
+#   - CV aleatoria: 5 folds equilibrados por rangos de precio, para que
+#     cada fold tenga precios bajos, medios y altos.
+#   - CV espacial: 5 regiones compactas creadas con k-means sobre las
+#     coordenadas (en metros). Cada fold deja por fuera una región entera,
+#     como le pasa al modelo con Chapinero. Es la misma idea del
+#     "clustering espacial" del paquete spatialsample (Lecture 14).
+#   - Las propiedades con las mismas coordenadas (el mismo edificio o el
+#     mismo anuncio repetido) quedan siempre en el mismo fold espacial, lo
+#     que evita que el modelo "vea" la misma propiedad al validar.
 ##########################################################
+
+# Objetos que ya existían en el entorno antes de correr este script. Al
+# final se borra solo lo que este script creó, sin tocar lo demás.
+objetos_previos <- ls()
 
 # Parametros ---------------------------------------------------------------
 k <- 5
@@ -60,4 +75,5 @@ print(data.frame(
 
 message("Folds guardados en 03_temp/cv_folds.rds")
 
-rm(k, semilla, crs_m, train, grupo_precio, fold_aleatoria, g, filas, puntos, xy, fold_espacial, cv_folds)
+# Limpiamos el entorno: borramos solo los objetos que creó este script.
+rm(list = setdiff(ls(), objetos_previos))
