@@ -1,25 +1,42 @@
 ##########################################################
 # 03_build_geo_features.R
 #
-# Objetivo: construir predictores geograficos de cada inmueble.
-# Insumos: 03_temp/train_clean.rds y 03_temp/test_clean.rds.
-# Salidas: 03_temp/train_geo.rds y 03_temp/test_geo.rds.
-# Descargas: 03_temp/geo_cache/.
+# Objetivo: construir predictores del entorno de cada propiedad a partir de
+# fuentes externas (requisito: al menos cuatro).
 #
-# Variables:
-#   - dist_transmilenio_m
-#   - dist_via_principal_m
-#   - dist_centro_comercial_m
-#   - dist_parque_m
-#   - dist_universidad_m
-#   - num_restaurantes_cafes_500m
-#   - pct_zona_verde_500m
-#   - pendiente_terreno_pct
-#   - estrato_manzana (nuevo, fuente oficial SDP / Datos Abiertos Bogota)
+# Etapa del Problem Set: Etapa 1: Understanding and Expanding the Data.
+# Insumos:  03_temp/train_clean.rds y 03_temp/test_clean.rds.
+# Salidas:  03_temp/train_geo.rds y 03_temp/test_geo.rds.
+#           Descargas guardadas en 03_temp/geo_cache/ para no repetirlas.
 #
-# Si ya existen train_geo.rds y test_geo.rds, solo se agrega
-# estrato_manzana sin repetir los calculos de OSM y elevacion.
+# Variables generadas (9) y su fuente:
+#   - dist_transmilenio_m: distancia a la estación troncal más cercana
+#     (capa oficial de IDECA, Catastro Bogotá).
+#   - dist_via_principal_m, dist_centro_comercial_m, dist_parque_m,
+#     dist_universidad_m: distancia al elemento más cercano (OpenStreetMap).
+#   - num_restaurantes_cafes_500m: número de restaurantes y cafés a menos de
+#     500 m (OpenStreetMap).
+#   - pct_zona_verde_500m: porcentaje del círculo de 500 m cubierto por
+#     parques, jardines, bosques o pasto (OpenStreetMap).
+#   - pendiente_terreno_pct: pendiente del terreno en la ubicación, a partir
+#     de un modelo digital de elevación (paquete elevatr).
+#   - estrato_manzana: estrato socioeconómico oficial de la manzana donde
+#     está la propiedad (Secretaría Distrital de Planeación, portal Datos
+#     Abiertos Bogotá). NA si el punto no cae en una manzana estratificada.
+#
+# Decisiones:
+#   - Las distancias son en línea recta, no por la red de calles.
+#   - Se trabaja en un CRS proyectado (crs_m) para medir en metros.
+#   - Muchas propiedades comparten coordenadas, así que cada variable se
+#     calcula una sola vez por ubicación única y luego se asigna a todas las
+#     propiedades de esa ubicación.
+#   - Si las bases de salida ya existen, no se recalculan las ocho primeras
+#     variables (cambiar forzar_recalculo a TRUE para rehacerlas); el
+#     estrato se agrega aparte si todavía no está.
 ##########################################################
+
+# Objetos que ya existían en el entorno antes de correr este script. Al
+# final se borra solo lo que este script creó, sin tocar lo demás.
 objetos_previos <- ls()
 
 source("01_code/functions/fun_osm.R")
@@ -225,7 +242,7 @@ if (!forzar_recalculo && file.exists(salida_train) && file.exists(salida_test)) 
   ), row.names = FALSE)
 }
 
-# 6. NUEVO: estrato oficial de la manzana -------------------------------
+# 6. Estrato oficial de la manzana ----------------------------------------
 # Se puede ejecutar sobre los RDS existentes, sin recalcular las 8
 # variables anteriores. Fuente: Secretaria Distrital de Planeacion.
 train_geo <- readRDS(salida_train)
@@ -244,7 +261,9 @@ if (forzar_recalculo || !"estrato_manzana" %in% names(train_geo) ||
     url <- jsonlite::fromJSON(api)$result$url
     archivo_tmp <- paste0(archivo_estratos, ".part")
     utils::download.file(url, archivo_tmp, mode = "wb", quiet = TRUE)
-    file.rename(archivo_tmp, archivo_estratos)
+    if (!file.rename(archivo_tmp, archivo_estratos)) {
+      stop("No se pudo guardar la capa de estratificación.")
+    }
   }
   estratos <- sf::st_read(archivo_estratos, quiet = TRUE)
   campo_estrato <- grep("^estrato$", names(estratos),
@@ -278,5 +297,7 @@ if (forzar_recalculo || !"estrato_manzana" %in% names(train_geo) ||
   message("estrato_manzana ya existe. No se recalcula.")
 }
 
+# Limpiamos el entorno: borramos solo los objetos que creó este script.
+# Todo lo necesario quedó guardado en 03_temp/. Conservamos las funciones
+# de OSM por si otro script las necesita.
 rm(list = setdiff(ls(), c(objetos_previos, "fun_osm", "fun_geometrias")))
-
