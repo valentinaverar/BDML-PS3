@@ -11,6 +11,8 @@
 # Salidas:  03_temp/train_features.rds y 03_temp/test_features.rds.
 #           03_temp/vocabulario_texto.rds: raíces de cada conjunto de
 #           predictores (lo usa 06_build_model_data.R).
+#           03_temp/tfidf_train.rds y 03_temp/tfidf_test.rds: matrices
+#           TF-IDF (dispersas) de la descripción, para el conjunto ampliado.
 #
 # Variables generadas:
 #   - raiz_<raíz>: 1 si la descripción usa alguna palabra con esa raíz y 0
@@ -20,14 +22,19 @@
 #   - txt_banos, txt_parqueaderos, txt_piso: número de baños, de
 #     parqueaderos y piso mencionados en la descripción.
 #   Las cuatro numéricas valen NA si la descripción no las menciona.
+#   - Matriz TF-IDF de unigramas y bigramas (hasta 12.000 términos), con
+#     fun_construir_tfidf() de Andrés. Se guarda aparte porque solo la
+#     pueden usar los modelos que manejan matrices dispersas grandes
+#     (Elastic Net y LightGBM).
 #
 # Decisiones:
 #   - Solo se usa la descripción (recomendación del profesor): el título
 #     es corto (mediana de 5 palabras) y repite la descripción.
-#   - Limpieza: minúsculas, sin tildes, sin números ni signos, y se
-#     corrigen restos de HTML de la fuente ("ba ntilde o" -> "bano") y
-#     palabras que perdieron la ñ o la tilde ("bao" -> "bano",
-#     "habitacin" -> "habitacion").
+#   - Limpieza común con fun_preprocesar_texto() (functions/): minúsculas,
+#     sin tildes ni signos, restos de HTML corregidos ("ba ntilde o" ->
+#     "bano"), palabras que perdieron la ñ o la tilde ("bao" -> "bano",
+#     "ubicacin" -> "ubicacion") y sin frases publicitarias de las
+#     inmobiliarias ("contactanos", "visita nuestra pagina web").
 #   - Se eliminan las negaciones directas ("sin ascensor", "no tiene
 #     parqueadero ni garaje") antes de contar palabras, para no marcar
 #     como presente lo que el anuncio dice que no tiene.
@@ -51,6 +58,11 @@
 #     baños como suma de las menciones; piso con ordinales).
 #     Donde la base trae la superficie construida, el área extraída
 #     coincide con ella (±10%) en el 85% de los casos.
+#   - TF-IDF: vocabulario e IDF aprendidos solo con train y aplicados a
+#     test (mismas columnas). Conserva las stopwords para que bigramas
+#     como "sin_ascensor" capturen las negaciones. Con validación cruzada
+#     espacial, solo el texto predice mejor con el TF-IDF que con las
+#     raíces (R² 0,41 frente a 0,29), aunque con muchas más columnas.
 ##########################################################
 
 # Objetos que ya existían en el entorno antes de correr este script. Al
@@ -59,7 +71,12 @@ objetos_previos <- ls()
 
 # Paquetes ----------------------------------------------------------------
 if (!require(pacman)) install.packages("pacman")
-pacman::p_load(dplyr, stringr, stringi, tidytext, SnowballC, stopwords)
+pacman::p_load(dplyr, stringr, stringi, tidytext, SnowballC, stopwords,
+               text2vec, Matrix)
+
+# Funciones de texto (limpieza común y TF-IDF).
+source("01_code/functions/fun_preprocesar_texto.R")
+source("01_code/functions/fun_construir_tfidf.R")
 
 # Parámetros ---------------------------------------------------------------
 # Porcentaje mínimo de anuncios en los que debe aparecer una raíz para
@@ -73,26 +90,7 @@ train <- readRDS(file.path(dir_temp, "train_geo.rds"))
 test  <- readRDS(file.path(dir_temp, "test_geo.rds"))
 
 # 1. Limpieza del texto -----------------------------------------------------
-# Palabras que en la fuente perdieron la ñ o la vocal con tilde.
-correcciones <- c(
-  "\\bbaos\\b" = "banos", "\\bbao\\b" = "bano", "\\bsaln\\b" = "salon",
-  "\\bbalcn\\b" = "balcon",
-  "\\brea\\b" = "area", "\\baos\\b" = "anos", "\\bnios\\b" = "ninos",
-  "\\bjardn\\b" = "jardin", "\\bdiseo\\b" = "diseno",
-  "\\bpequeo\\b" = "pequeno", "\\btambin\\b" = "tambien",
-  "cin\\b" = "cion"
-)
-
-fun_limpiar_texto <- function(.texto) {
-  x <- stri_trans_general(tolower(coalesce(.texto, "")), "Latin-ASCII")
-  # Restos de HTML: "am eacute ricas" -> "americas", "ba ntilde o" -> "bano".
-  x <- str_replace_all(x, "\\s?([aeiou])(acute|grave|uml|circ)\\s?", "\\1")
-  x <- str_replace_all(x, "\\s?ntilde\\s?", "n")
-  x <- str_replace_all(x, "\\b(nbsp|amp|quot|br|b)\\b", " ")
-  x <- str_replace_all(x, "[^a-z0-9]+", " ")
-  x <- str_replace_all(x, correcciones)
-  str_squish(x)
-}
+# Se usa fun_preprocesar_texto() (functions/fun_preprocesar_texto.R).
 
 # 2. Negaciones directas ---------------------------------------------------
 # No pretende resolver todas las negaciones del lenguaje natural.
@@ -142,7 +140,7 @@ fun_numero <- function(.x, .patron, .min, .max) {
 # 4. Construir las variables -----------------------------------------------
 datos <- bind_rows(train = train, test = test, .id = "base")
 datos$doc <- seq_len(nrow(datos))
-texto <- fun_limpiar_texto(datos$description)
+texto <- fun_preprocesar_texto(datos$description)
 texto <- str_replace_all(texto, patron_negacion, " ")
 
 # Cantidades: se convierten "dos", "tres"... a dígitos.
@@ -214,7 +212,19 @@ vocabulario_texto <- list(
   frecuencia = frecuencia
 )
 
-# 5. Guardar y diagnosticar -------------------------------------------------
+# 5. Matriz TF-IDF de la descripción ---------------------------------------
+# fun_construir_tfidf() limpia el texto con fun_preprocesar_texto(), aprende
+# el vocabulario y el IDF con train y aplica lo mismo a test.
+tfidf <- fun_construir_tfidf(train$description, test$description)
+if (nrow(tfidf$train) != nrow(train) || nrow(tfidf$nuevo) != nrow(test) ||
+    !identical(colnames(tfidf$train), colnames(tfidf$nuevo))) {
+  stop("Las matrices TF-IDF no coinciden con las filas o columnas de entrada.")
+}
+saveRDS(tfidf$train, file.path(dir_temp, "tfidf_train.rds"))
+saveRDS(tfidf$nuevo, file.path(dir_temp, "tfidf_test.rds"))
+message("TF-IDF: ", ncol(tfidf$train), " términos (unigramas y bigramas).")
+
+# 6. Guardar y diagnosticar -------------------------------------------------
 train_features <- datos |> filter(base == "train") |> select(-base, -doc)
 test_features  <- datos |> filter(base == "test") |> select(-base, -doc)
 saveRDS(train_features, file.path(dir_temp, "train_features.rds"))
@@ -230,8 +240,8 @@ print(data.frame(
   pct_con_dato_train = round(100 * colMeans(!is.na(train_features[variables_num])), 1),
   pct_con_dato_test = round(100 * colMeans(!is.na(test_features[variables_num])), 1)
 ), row.names = FALSE)
-message("Guardados: 03_temp/train_features.rds, test_features.rds y ",
-        "vocabulario_texto.rds")
+message("Guardados en 03_temp/: train_features.rds, test_features.rds, ",
+        "vocabulario_texto.rds, tfidf_train.rds y tfidf_test.rds")
 
 # Limpiamos el entorno: borramos solo los objetos que creó este script.
 rm(list = setdiff(ls(), objetos_previos))
