@@ -47,7 +47,8 @@
 #     calcula con train y test juntos. No usa el precio, así que no filtra
 #     información de la variable a predecir.
 #   - Las cantidades se extraen con reglas de plausibilidad (p. ej. área
-#     entre 20 y 2.000 m², sin tomar "terraza de 30 m" ni "a 300 metros").
+#     entre 20 y 2.000 m², sin tomar "terraza de 30 m" ni "a 300 metros";
+#     baños como suma de las menciones; piso con ordinales).
 #     Donde la base trae la superficie construida, el área extraída
 #     coincide con ella (±10%) en el 85% de los casos.
 ##########################################################
@@ -148,13 +149,36 @@ texto <- str_replace_all(texto, patron_negacion, " ")
 texto_num <- str_replace_all(texto, numeros_palabra)
 datos$txt_area_m2 <- vapply(texto_num, fun_area, numeric(1),
                             USE.NAMES = FALSE)
-datos$txt_banos <- fun_numero(texto_num, "\\b(\\d)\\s?banos?\\b", 1, 8)
+# Baños: se suman las menciones ("1 bano social y 2 banos" = 3), porque los
+# anuncios suelen listarlos por separado. Coincide con bathrooms (donde hay
+# dato) más a menudo que tomar solo la primera mención (74% frente a 71%).
+datos$txt_banos <- vapply(
+  str_match_all(texto_num, "\\b(\\d)\\s?banos?\\b"),
+  function(m) if (nrow(m)) sum(as.numeric(m[, 2])) else NA_real_,
+  numeric(1)
+)
+datos$txt_banos[datos$txt_banos < 1 | datos$txt_banos > 8] <- NA
 datos$txt_parqueaderos <- fun_numero(
   texto_num, "\\b(\\d)\\s?(?:parqueaderos?|garajes?|estacionamientos?)\\b",
   1, 6)
+# Piso: se usa el texto sin convertir "un", "dos"... a dígitos (si no,
+# "piso un parqueadero" se leería como piso 1) y se traducen los ordinales
+# ("segundo piso" = piso 2). "Cuarto piso" no se traduce porque "cuarto"
+# también significa habitación. Se descartan números seguidos de otra cosa
+# ("piso 1 parqueadero", "piso 2 banos").
+ordinales_piso <- c(
+  "\\bprimer(?:o)?\\s+piso\\b" = "piso 1", "\\bsegundo\\s+piso\\b" = "piso 2",
+  "\\btercer(?:o)?\\s+piso\\b" = "piso 3", "\\bquinto\\s+piso\\b" = "piso 5",
+  "\\bsexto\\s+piso\\b" = "piso 6", "\\bseptimo\\s+piso\\b" = "piso 7",
+  "\\boctavo\\s+piso\\b" = "piso 8", "\\bnoveno\\s+piso\\b" = "piso 9",
+  "\\bdecimo\\s+piso\\b" = "piso 10"
+)
+texto_piso <- str_replace_all(texto, ordinales_piso)
 datos$txt_piso <- coalesce(
-  fun_numero(texto_num, "\\bpiso\\s?(\\d{1,2})\\b", 1, 40),
-  fun_numero(texto_num, "\\b(\\d{1,2})\\s?piso\\b", 1, 40)
+  fun_numero(texto_piso, paste0("\\bpiso\\s?(\\d{1,2})\\b(?!\\s?(?:parqueader|",
+                                "garaj|bano|habitac|alcob|deposit|m2|mts|metros))"),
+             1, 40),
+  fun_numero(texto_piso, "\\b(\\d{1,2})\\s?piso\\b", 1, 40)
 )
 
 # Bolsa de palabras: tokens, sin números, stopwords ni palabras cortas;
