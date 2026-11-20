@@ -45,37 +45,43 @@ source("01_code/01_get_data.R")
 # Limpia la base de propiedades (train y test).
 source("01_code/02_clean_data.R")
 
-# Predictores externos de OpenStreetMap (mínimo 4).
-# source("01_code/03_build_osm_features.R")
+# Predictores externos: OSM, IDECA (TransMilenio), modelo de elevación y
+# estrato por manzana (Datos Abiertos Bogotá).
+source("01_code/03_build_geo_features.R")
 
-# Predictores a partir del título y la descripción del anuncio (mínimo 4).
-# source("01_code/04_build_text_features.R")
+# Predictores a partir del título y la descripción del anuncio.
+source("01_code/04_build_text_features.R")
 
-# Distribución de precios, faltantes y diferencias de Chapinero.
-# source("01_code/05_descriptive_analysis.R")
+# Imputación de faltantes y conjuntos de predictores (base, completo y
+# ampliado).
+source("01_code/05_build_model_data.R")
 
-# Particiones de validación cruzada (aleatoria y espacial) compartidas por
-# todos los modelos.
-# source("01_code/06_create_cv_folds.R")
+# Similitud con Chapinero y particiones de validación cruzada (aleatoria y
+# espacial) compartidas por todos los modelos.
+source("01_code/06_create_cv_folds.R")
 
 # Bloque B: modelos (Etapa 2; cada script genera sus envíos a Kaggle) -----
 # Cada script puede correrse solo, una vez corridos los scripts 01 a 06.
 
-# source("01_code/07_model_linear_regression.R")
+source("01_code/07_model_linear_regression.R")
 # source("01_code/08_model_elastic_net.R")
 # source("01_code/09_model_cart.R")
 # source("01_code/10_model_random_forest.R")
+# Desactivado temporalmente: se actualiza a los conjuntos del 05.
 # source("01_code/11_model_boosting.R")
 # source("01_code/12_model_neural_network.R")
 
 # Bloque C: análisis para las presentaciones -------------------------------
 
+# Etapa 1: distribución de precios, faltantes y diferencias de Chapinero.
+# source("01_code/13_descriptive_analysis.R")
+
 # Etapa 2: comparación de algoritmos (deck compare_equipo_03).
-# source("01_code/13_compare_algorithms.R")
+# source("01_code/14_compare_algorithms.R")
 
 # Etapa 3: validación espacial frente a la aleatoria y frente a Kaggle.
-# source("01_code/14_spatial_validation.R")
+# source("01_code/15_spatial_validation.R")
 
 # Etapa 4: mejor modelo, errores y decisión de compra (deck best_equipo_03).
-# source("01_code/15_best_model_analysis.R")
-# source("01_code/16_business_decision.R")
+# source("01_code/16_best_model_analysis.R")
+# source("01_code/17_business_decision.R")

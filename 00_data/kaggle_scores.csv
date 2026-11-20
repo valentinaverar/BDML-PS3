@@ -1,1 +1,4 @@
 archivo,algoritmo,puntaje_publico,puntaje_privado,fecha_envio,integrante,descripcion
+LM_base,Regresión lineal,296618638.37,,2026-11-20,Valentina Vera,MCO log(precio) conjunto Base (17)
+LM_completo,Regresión lineal,215584428.03,,2026-11-20,Valentina Vera,MCO log(precio) conjunto Completo (175)
+
