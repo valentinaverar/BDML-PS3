@@ -107,7 +107,9 @@ read.csv("02_outputs/tables/registro_modelos.csv") |>
   filter(algoritmo == "Regresión lineal") |>
   transmute(archivo, tipo_cv,
             mae_millones = round(mae / 1e6, 1),
+            mae_parecidas_millones = round(mae_parecidas / 1e6, 1),
             sesgo_millones = round(sesgo_medio / 1e6, 1),
+            sesgo_parecidas_millones = round(sesgo_parecidas / 1e6, 1),
             pct_sobreestima = round(pct_sobreestima, 1)) |>
   print(row.names = FALSE)
 

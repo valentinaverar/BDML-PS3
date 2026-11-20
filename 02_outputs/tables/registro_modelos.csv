@@ -1,5 +1,5 @@
-"archivo","algoritmo","conjunto","n_predictores","hiperparametros","tipo_cv","mae","rmse","sesgo_medio","pct_sobreestima","mae_sobreestima","fecha"
-"LM_base","Regresión lineal","base",17,"MCO sobre log(precio)","espacial",189613138.131794,264948997.822428,-40756684.3376894,53.6254010971949,138792858.187024,"2026-11-20"
-"LM_base","Regresión lineal","base",17,"MCO sobre log(precio)","aleatoria",184462100.81769,259060685.430251,-41939106.637983,53.7289100507194,132631570.27117,"2026-11-20"
-"LM_completo","Regresión lineal","completo",174,"MCO sobre log(precio)","espacial",157055975.35818,222964241.306281,-20154459.1818676,54.3861919055998,125860546.013166,"2026-11-20"
-"LM_completo","Regresión lineal","completo",174,"MCO sobre log(precio)","aleatoria",149416009.783334,215641336.161644,-27917220.643102,52.7403995445606,115185692.74165,"2026-11-20"
+"archivo","algoritmo","conjunto","n_predictores","hiperparametros","tipo_cv","mae","rmse","sesgo_medio","pct_sobreestima","mae_sobreestima","fecha","mae_parecidas","sesgo_parecidas"
+"LM_base","Regresión lineal","base",17,"MCO sobre log(precio)","espacial",189613138.131794,264948997.822428,-40756684.3376894,53.6254010971949,138792858.187024,"2026-11-20",201121383.783451,-89276811.1235688
+"LM_base","Regresión lineal","base",17,"MCO sobre log(precio)","aleatoria",184462100.81769,259060685.430251,-41939106.637983,53.7289100507194,132631570.27117,"2026-11-20",197261488.392993,-88836844.2988111
+"LM_completo","Regresión lineal","completo",174,"MCO sobre log(precio)","espacial",157055975.35818,222964241.306281,-20154459.1818676,54.3861919055998,125860546.013166,"2026-11-20",177351408.060646,23364111.1829206
+"LM_completo","Regresión lineal","completo",174,"MCO sobre log(precio)","aleatoria",149416009.783334,215641336.161644,-27917220.643102,52.7403995445606,115185692.74165,"2026-11-20",160290723.616888,-11137332.7987838
