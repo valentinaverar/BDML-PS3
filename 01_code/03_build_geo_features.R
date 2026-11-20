@@ -262,7 +262,11 @@ if (forzar_recalculo || !"estrato_manzana" %in% names(train_geo) ||
                   id_recurso)
     url <- jsonlite::fromJSON(api)$result$url
     archivo_tmp <- paste0(archivo_estratos, ".part")
+    # El archivo pesa unos 83 MB: se amplía el tiempo máximo de descarga de
+    # R (60 s por defecto) y luego se restaura el valor original.
+    timeout_original <- options(timeout = max(1200, getOption("timeout")))
     utils::download.file(url, archivo_tmp, mode = "wb", quiet = TRUE)
+    options(timeout_original)
     if (!file.rename(archivo_tmp, archivo_estratos)) {
       stop("No se pudo guardar la capa de estratificación.")
     }
