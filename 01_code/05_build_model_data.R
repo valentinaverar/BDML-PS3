@@ -1,5 +1,5 @@
 ##########################################################
-# 06_build_model_data.R
+# 05_build_model_data.R
 #
 # Objetivo: dejar las bases listas para los modelos: tratar los valores
 # faltantes y definir los conjuntos de predictores que comparten todos los

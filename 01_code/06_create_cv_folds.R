@@ -1,5 +1,5 @@
 ##########################################################
-# 05_create_cv_folds.R
+# 06_create_cv_folds.R
 #
 # Objetivo: crear las particiones de validación cruzada que comparten
 # todos los modelos (common ground): una aleatoria y una espacial.

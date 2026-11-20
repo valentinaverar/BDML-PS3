@@ -52,13 +52,13 @@ source("01_code/03_build_geo_features.R")
 # Predictores a partir del título y la descripción del anuncio.
 source("01_code/04_build_text_features.R")
 
-# Particiones de validación cruzada (aleatoria y espacial) compartidas por
-# todos los modelos.
-source("01_code/05_create_cv_folds.R")
-
 # Imputación de faltantes y conjuntos de predictores (base, completo y
 # ampliado).
-source("01_code/06_build_model_data.R")
+source("01_code/05_build_model_data.R")
+
+# Similitud con Chapinero y particiones de validación cruzada (aleatoria y
+# espacial) compartidas por todos los modelos.
+source("01_code/06_create_cv_folds.R")
 
 # Bloque B: modelos (Etapa 2; cada script genera sus envíos a Kaggle) -----
 # Cada script puede correrse solo, una vez corridos los scripts 01 a 06.
@@ -67,7 +67,7 @@ source("01_code/06_build_model_data.R")
 # source("01_code/08_model_elastic_net.R")
 # source("01_code/09_model_cart.R")
 # source("01_code/10_model_random_forest.R")
-# Desactivado temporalmente: se actualiza a los conjuntos del 06.
+# Desactivado temporalmente: se actualiza a los conjuntos del 05.
 # source("01_code/11_model_boosting.R")
 # source("01_code/12_model_neural_network.R")
 

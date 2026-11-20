@@ -3,7 +3,7 @@
 #
 # Función para medir qué tanto se parece cada propiedad a las de Chapinero
 # (test), con un propensity score ("adversarial validation"). Se usa en
-# 05_create_cv_folds.R para elegir zonas de train parecidas a Chapinero
+# 06_create_cv_folds.R para elegir zonas de train parecidas a Chapinero
 # y, en la Etapa 4, para medir el error del modelo en propiedades
 # parecidas a las que la empresa quiere comprar.
 ##########################################################

@@ -10,7 +10,7 @@
 # Insumos:  03_temp/train_geo.rds y 03_temp/test_geo.rds.
 # Salidas:  03_temp/train_features.rds y 03_temp/test_features.rds.
 #           03_temp/vocabulario_texto.rds: raíces de cada conjunto de
-#           predictores (lo usa 06_build_model_data.R).
+#           predictores (lo usa 05_build_model_data.R).
 #           03_temp/tfidf_train.rds y 03_temp/tfidf_test.rds: matrices
 #           TF-IDF (dispersas) de la descripción, para el conjunto ampliado.
 #
@@ -80,7 +80,7 @@ source("01_code/functions/fun_construir_tfidf.R")
 
 # Parámetros ---------------------------------------------------------------
 # Porcentaje mínimo de anuncios en los que debe aparecer una raíz para
-# entrar a cada conjunto de predictores (ver 06_build_model_data.R).
+# entrar a cada conjunto de predictores (ver 05_build_model_data.R).
 umbral_completo <- 5
 umbral_ampliado <- 1
 
@@ -204,7 +204,7 @@ presentes <- tokens |> filter(raiz %in% vocabulario)
 indicadores[cbind(presentes$doc, match(presentes$raiz, vocabulario))] <- 1L
 datos <- bind_cols(datos, as.data.frame(indicadores))
 
-# Vocabulario de cada conjunto, para 06_build_model_data.R.
+# Vocabulario de cada conjunto, para 05_build_model_data.R.
 vocabulario_texto <- list(
   completo = paste0("raiz_", frecuencia$raiz[
     frecuencia$pct_anuncios >= umbral_completo]),
