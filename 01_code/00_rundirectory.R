@@ -40,10 +40,10 @@ dir.create("03_temp", showWarnings = FALSE)
 # Bloque A: datos (Etapa 1) ------------------------------------------------
 
 # Obtiene los datos crudos de Kaggle (ver README, sección Datos).
-# source("01_code/01_get_data.R")
+source("01_code/01_get_data.R")
 
 # Limpia la base de propiedades (train y test).
-# source("01_code/02_clean_data.R")
+source("01_code/02_clean_data.R")
 
 # Predictores externos de OpenStreetMap (mínimo 4).
 # source("01_code/03_build_osm_features.R")
