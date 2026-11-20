@@ -6,7 +6,7 @@
 #
 # Etapa del Problem Set: Etapa 2: Training and Comparing Algorithms.
 # Insumos:  03_temp/train_features.rds, 03_temp/test_features.rds,
-#           03_temp/cv_folds.rds (script 05) y la plantilla de Kaggle.
+#           03_temp/cv_folds.rds (script 06) y la plantilla de Kaggle.
 # Salidas:  02_outputs/predictions/<nombre>.csv (envío a Kaggle).
 #           02_outputs/tables/LGBM_metrocuadrado_ensayos.csv (todos los
 #           ensayos de hiperparámetros y su MAE en CV espacial).
@@ -150,7 +150,7 @@ local({
         !all(vapply(partes, indices_validos, logical(1L))) ||
         !identical(sort(as.integer(unlist(partes))), seq_along(y))) {
       fallar("Los folds de CV ", tipo, " deben cubrir cada fila de train una vez. ",
-             "Revise 05_create_cv_folds.R.")
+             "Revise 06_create_cv_folds.R.")
     }
     folds[[tipo]] <- lapply(partes, function(idx) sort(as.integer(idx)))
   }

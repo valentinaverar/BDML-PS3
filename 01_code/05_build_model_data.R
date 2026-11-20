@@ -9,7 +9,7 @@
 # Insumos:  03_temp/train_features.rds, 03_temp/test_features.rds y
 #           03_temp/vocabulario_texto.rds (script 04).
 # Salidas:  03_temp/train_model.rds y 03_temp/test_model.rds (mismo orden
-#           de filas que train_features.rds, el de los folds del 05).
+#           de filas que train_features.rds, el de los folds del 06).
 #           03_temp/conjuntos_predictores.rds: lista con los nombres de las
 #           variables de cada conjunto (base, completo y ampliado) y las
 #           rutas de la matriz TF-IDF que se suma en el conjunto ampliado.
