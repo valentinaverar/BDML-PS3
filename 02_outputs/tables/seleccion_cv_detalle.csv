@@ -1,49 +1,49 @@
 "zona","modelo","esquema","mae_cv","mae_verdadero","brecha_pct"
-"1: centro internacional / central bavaria","Random Forest","Aleatoria",99.7739076723031,158.007539955695,-36.8549705284445
-"1: centro internacional / central bavaria","Random Forest","k-means 5 regiones",170.203657027171,158.007539955695,7.71869309204854
-"1: centro internacional / central bavaria","Random Forest","k-means 20 regiones",147.031138849482,158.007539955695,-6.94675779984307
-"1: centro internacional / central bavaria","Random Forest","Bloques de 2 km",142.822271419465,158.007539955695,-9.61047082973873
-"1: centro internacional / central bavaria","Random Forest","Bloques de 1 km",138.895685365916,158.007539955695,-12.0955332860299
-"1: centro internacional / central bavaria","Random Forest","Bloques de 700 m",137.319979518873,158.007539955695,-13.0927678784332
-"1: centro internacional / central bavaria","Random Forest","Bloques de 500 m",136.134204681313,158.007539955695,-13.8432224693294
-"1: centro internacional / central bavaria","Random Forest","Bloques de 300 m",135.354899008176,158.007539955695,-14.3364303715316
-"1: centro internacional / central bavaria","Regresión lineal","Aleatoria",149.662572437048,196.26844694743,-23.745984255363
-"1: centro internacional / central bavaria","Regresión lineal","k-means 5 regiones",172.450505959476,196.26844694743,-12.1353897472547
-"1: centro internacional / central bavaria","Regresión lineal","k-means 20 regiones",155.482382900991,196.26844694743,-20.7807544619557
-"1: centro internacional / central bavaria","Regresión lineal","Bloques de 2 km",153.671597562257,196.26844694743,-21.7033609057814
-"1: centro internacional / central bavaria","Regresión lineal","Bloques de 1 km",152.387242015613,196.26844694743,-22.3577480814177
-"1: centro internacional / central bavaria","Regresión lineal","Bloques de 700 m",152.556476578785,196.26844694743,-22.2715220141081
-"1: centro internacional / central bavaria","Regresión lineal","Bloques de 500 m",151.967569455376,196.26844694743,-22.571573872962
-"1: centro internacional / central bavaria","Regresión lineal","Bloques de 300 m",151.592576014145,196.26844694743,-22.7626353742187
-"18: san patricio / chico navarra","Random Forest","Aleatoria",100.813774299982,138.470891207118,-27.1949697000293
-"18: san patricio / chico navarra","Random Forest","k-means 5 regiones",171.027563648332,138.470891207118,23.5115641687588
-"18: san patricio / chico navarra","Random Forest","k-means 20 regiones",148.3131544471,138.470891207118,7.10782111256939
-"18: san patricio / chico navarra","Random Forest","Bloques de 2 km",143.434657997462,138.470891207118,3.58470054397205
-"18: san patricio / chico navarra","Random Forest","Bloques de 1 km",140.734421016339,138.470891207118,1.63466111143551
-"18: san patricio / chico navarra","Random Forest","Bloques de 700 m",138.643358614047,138.470891207118,0.124551380745927
-"18: san patricio / chico navarra","Random Forest","Bloques de 500 m",137.181050078978,138.470891207118,-0.931489006025239
-"18: san patricio / chico navarra","Random Forest","Bloques de 300 m",136.339692577373,138.470891207118,-1.53909504818373
-"18: san patricio / chico navarra","Regresión lineal","Aleatoria",150.054417516357,169.900329442131,-11.6809143283817
-"18: san patricio / chico navarra","Regresión lineal","k-means 5 regiones",173.77431067691,169.900329442131,2.28014933667218
-"18: san patricio / chico navarra","Regresión lineal","k-means 20 regiones",158.658849745977,169.900329442131,-6.6165143605463
-"18: san patricio / chico navarra","Regresión lineal","Bloques de 2 km",154.1268114268,169.900329442131,-9.28398318421375
-"18: san patricio / chico navarra","Regresión lineal","Bloques de 1 km",152.800165654809,169.900329442131,-10.0648208531853
-"18: san patricio / chico navarra","Regresión lineal","Bloques de 700 m",152.915651246104,169.900329442131,-9.99684830029238
-"18: san patricio / chico navarra","Regresión lineal","Bloques de 500 m",152.13599559147,169.900329442131,-10.4557383196317
-"18: san patricio / chico navarra","Regresión lineal","Bloques de 300 m",152.2605233189,169.900329442131,-10.3824437428411
-"2: santa paula / santa barbara","Random Forest","Aleatoria",101.02846180652,128.81166523732,-21.5688566556553
-"2: santa paula / santa barbara","Random Forest","k-means 5 regiones",169.915997595699,128.81166523732,31.9104114387855
-"2: santa paula / santa barbara","Random Forest","k-means 20 regiones",147.397790588717,128.81166523732,14.4289147393245
-"2: santa paula / santa barbara","Random Forest","Bloques de 2 km",146.366605206643,128.81166523732,13.628377474183
-"2: santa paula / santa barbara","Random Forest","Bloques de 1 km",141.50226235605,128.81166523732,9.852055786523
-"2: santa paula / santa barbara","Random Forest","Bloques de 700 m",138.841568346033,128.81166523732,7.786486643298
-"2: santa paula / santa barbara","Random Forest","Bloques de 500 m",138.269124686886,128.81166523732,7.34208305757282
-"2: santa paula / santa barbara","Random Forest","Bloques de 300 m",136.462335623679,128.81166523732,5.93942355474104
-"2: santa paula / santa barbara","Regresión lineal","Aleatoria",150.362774689714,162.701611435605,-7.58372129016964
-"2: santa paula / santa barbara","Regresión lineal","k-means 5 regiones",171.959783954595,162.701611435605,5.69027708902216
-"2: santa paula / santa barbara","Regresión lineal","k-means 20 regiones",157.046247997565,162.701611435605,-3.47591114073207
-"2: santa paula / santa barbara","Regresión lineal","Bloques de 2 km",156.051484037019,162.701611435605,-4.08731501790832
-"2: santa paula / santa barbara","Regresión lineal","Bloques de 1 km",154.178305426869,162.701611435605,-5.23861191879464
-"2: santa paula / santa barbara","Regresión lineal","Bloques de 700 m",152.81182683747,162.701611435605,-6.07847980783471
-"2: santa paula / santa barbara","Regresión lineal","Bloques de 500 m",152.691059562189,162.701611435605,-6.15270603965586
-"2: santa paula / santa barbara","Regresión lineal","Bloques de 300 m",152.394247413463,162.701611435605,-6.33513333469479
+"1: centro internacional / central bavaria","Random Forest","Aleatoria",100.073780953002,158.733991407271,-36.9550402747463
+"1: centro internacional / central bavaria","Random Forest","k-means 5 regiones",170.290733999386,158.733991407271,7.28057203731658
+"1: centro internacional / central bavaria","Random Forest","k-means 20 regiones",147.089551719426,158.733991407271,-7.33581987362051
+"1: centro internacional / central bavaria","Random Forest","Bloques de 2 km",143.373526386234,158.733991407271,-9.67685930710691
+"1: centro internacional / central bavaria","Random Forest","Bloques de 1 km",138.862084217065,158.733991407271,-12.5189992477542
+"1: centro internacional / central bavaria","Random Forest","Bloques de 700 m",137.68397812822,158.733991407271,-13.2611881629325
+"1: centro internacional / central bavaria","Random Forest","Bloques de 500 m",136.412320876663,158.733991407271,-14.0623128875631
+"1: centro internacional / central bavaria","Random Forest","Bloques de 300 m",135.363392246412,158.733991407271,-14.7231219688139
+"1: centro internacional / central bavaria","Regresión lineal","Aleatoria",149.212492238945,191.419001170591,-22.049278636676
+"1: centro internacional / central bavaria","Regresión lineal","k-means 5 regiones",169.867666649372,191.419001170591,-11.2587226918049
+"1: centro internacional / central bavaria","Regresión lineal","k-means 20 regiones",155.078016214136,191.419001170591,-18.9850457552375
+"1: centro internacional / central bavaria","Regresión lineal","Bloques de 2 km",153.46232206847,191.419001170591,-19.8291072829776
+"1: centro internacional / central bavaria","Regresión lineal","Bloques de 1 km",151.881634598499,191.419001170591,-20.6548808270383
+"1: centro internacional / central bavaria","Regresión lineal","Bloques de 700 m",152.081985026091,191.419001170591,-20.5502149232528
+"1: centro internacional / central bavaria","Regresión lineal","Bloques de 500 m",151.634683474262,191.419001170591,-20.7838915954189
+"1: centro internacional / central bavaria","Regresión lineal","Bloques de 300 m",151.191223883154,191.419001170591,-21.0155611728358
+"18: san patricio / chico navarra","Random Forest","Aleatoria",100.868357429919,139.482030824081,-27.6836185751143
+"18: san patricio / chico navarra","Random Forest","k-means 5 regiones",170.809125931196,139.482030824081,22.4595920506958
+"18: san patricio / chico navarra","Random Forest","k-means 20 regiones",148.601122997822,139.482030824081,6.53782578290793
+"18: san patricio / chico navarra","Random Forest","Bloques de 2 km",143.718620743154,139.482030824081,3.03737326883024
+"18: san patricio / chico navarra","Random Forest","Bloques de 1 km",140.143343287632,139.482030824081,0.474120185692629
+"18: san patricio / chico navarra","Random Forest","Bloques de 700 m",138.326770252317,139.482030824081,-0.828250467058991
+"18: san patricio / chico navarra","Random Forest","Bloques de 500 m",137.530149312228,139.482030824081,-1.39937847213782
+"18: san patricio / chico navarra","Random Forest","Bloques de 300 m",136.272459901894,139.482030824081,-2.30106408920511
+"18: san patricio / chico navarra","Regresión lineal","Aleatoria",149.417096829818,170.30738390247,-12.2662251007362
+"18: san patricio / chico navarra","Regresión lineal","k-means 5 regiones",170.102333769618,170.30738390247,-0.120400025032752
+"18: san patricio / chico navarra","Regresión lineal","k-means 20 regiones",157.394389221462,170.30738390247,-7.58216959541978
+"18: san patricio / chico navarra","Regresión lineal","Bloques de 2 km",153.619938862883,170.30738390247,-9.79842720685709
+"18: san patricio / chico navarra","Regresión lineal","Bloques de 1 km",152.265676475223,170.30738390247,-10.5936143306494
+"18: san patricio / chico navarra","Regresión lineal","Bloques de 700 m",152.331477493419,170.30738390247,-10.5549777098005
+"18: san patricio / chico navarra","Regresión lineal","Bloques de 500 m",151.425134308112,170.30738390247,-11.0871585022822
+"18: san patricio / chico navarra","Regresión lineal","Bloques de 300 m",151.719605586794,170.30738390247,-10.9142527409854
+"2: santa paula / santa barbara","Random Forest","Aleatoria",101.300742263649,128.954296041103,-21.4444610427241
+"2: santa paula / santa barbara","Random Forest","k-means 5 regiones",169.73407942766,128.954296041103,31.623439186205
+"2: santa paula / santa barbara","Random Forest","k-means 20 regiones",148.067271234808,128.954296041103,14.8215110162856
+"2: santa paula / santa barbara","Random Forest","Bloques de 2 km",146.708891874931,128.954296041103,13.7681305539203
+"2: santa paula / santa barbara","Random Forest","Bloques de 1 km",141.693615215851,128.954296041103,9.87894127287375
+"2: santa paula / santa barbara","Random Forest","Bloques de 700 m",139.457460521593,128.954296041103,8.14487365131466
+"2: santa paula / santa barbara","Random Forest","Bloques de 500 m",137.88523141685,128.954296041103,6.92565943898459
+"2: santa paula / santa barbara","Random Forest","Bloques de 300 m",136.738067252049,128.954296041103,6.03606971609919
+"2: santa paula / santa barbara","Regresión lineal","Aleatoria",149.78740295738,161.893583685275,-7.47786320638232
+"2: santa paula / santa barbara","Regresión lineal","k-means 5 regiones",169.200620198109,161.893583685275,4.5134812303858
+"2: santa paula / santa barbara","Regresión lineal","k-means 20 regiones",156.153128791428,161.893583685275,-3.54581989179162
+"2: santa paula / santa barbara","Regresión lineal","Bloques de 2 km",156.036989412459,161.893583685275,-3.61755799056338
+"2: santa paula / santa barbara","Regresión lineal","Bloques de 1 km",152.98702474484,161.893583685275,-5.50148976734574
+"2: santa paula / santa barbara","Regresión lineal","Bloques de 700 m",152.321551568287,161.893583685275,-5.91254569766996
+"2: santa paula / santa barbara","Regresión lineal","Bloques de 500 m",152.267508659942,161.893583685275,-5.94592744580021
+"2: santa paula / santa barbara","Regresión lineal","Bloques de 300 m",151.747948474865,161.893583685275,-6.26685442341729
