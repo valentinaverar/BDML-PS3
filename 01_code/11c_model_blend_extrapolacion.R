@@ -128,10 +128,10 @@ fun_acotar <- function(.pred) {
 
 # LightGBM: el ensayo que ya está en Kaggle --------------------------------
 ensayos <- read.csv("02_outputs/tables/LGBM_completo_ensayos.csv")
-ganador <- ensayos[ensayos$rondas == 4123 & ensayos$num_leaves == 66, ]
-if (nrow(ganador) != 1) {
-  stop("No encontré el ensayo del LightGBM de Kaggle (66 hojas, 4123 rondas).")
-}
+
+# Mejor ensayo del script 11 (el mismo que usan el 11 y el 11b).
+ganador <- ensayos[which.min(ensayos$mae), ]
+
 fun_armar_params <- function(.fila) {
   list(
     objective = "regression_l1", metric = "l1",
