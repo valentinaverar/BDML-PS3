@@ -70,7 +70,9 @@ source("01_code/08_model_elastic_net.R")
 source("01_code/11_model_boosting.R")
 # LightGBM que predice el precio por m² (donde la superficie es real).
 source("01_code/11b_model_boosting_precio_m2.R")
-# source("01_code/12_model_neural_network.R")
+# Mezcla LightGBM + Elastic Net para extrapolar el precio en Chapinero.
+source("01_code/11c_model_blend_extrapolacion.R")
+source("01_code/12_model_neural_network.R")
 
 # Bloque C: análisis para las presentaciones -------------------------------
 
