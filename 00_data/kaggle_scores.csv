@@ -3,4 +3,6 @@ LM_base,Regresión lineal,296618638.37,,2026-11-20,Valentina Vera,MCO log(precio
 LM_completo,Regresión lineal,215584428.03,,2026-11-20,Valentina Vera,MCO log(precio) conjunto Completo (175)
 LGBM_completo_lr_0_017_hojas_66_prof_7_minhoja_23_rondas_4123,LightGBM,178605249.56,,2026-11-20,Valentina Vera,LightGBM L1 conjunto Completo (175); mejor de 30 ensayos (búsqueda aleatoria) con CV espacial
 LGBM_ampliado_lr_0_017_hojas_66_prof_7_minhoja_23_rondas_4994,LightGBM,194387125.17,,2026-11-20,Valentina Vera,Experimento: LightGBM L1 conjunto Ampliado (Completo + TF-IDF); mismos hiperparámetros que Completo
+LM_BASIC,Regresión lineal,264400000,,2026-11-19,Andrés Silva,"MCO exploratorio anterior al script 07. La especificación exacta no quedó en el repositorio; el puntaje público reportado es 264.4 millones."
+LGBM_lr_00318_leaves_80_depth_10_minleaf_27_ff_0748_bf_0901_l1_1130_l2_1328,LightGBM,205200000,,2026-11-19,Andrés Silva,"Exploratorio anterior al conjunto Completo: LightGBM con pérdida L1 sobre el precio en pesos, 12 predictores a mano (estrato, superficies, cuartos, baños, latitud, longitud y señales de texto) y búsqueda bayesiana. Puntaje público reportado 205.2 millones."
 
