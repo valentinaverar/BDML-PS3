@@ -1,4 +1,6 @@
 archivo,algoritmo,puntaje_publico,puntaje_privado,fecha_envio,integrante,descripcion
 LM_base,Regresión lineal,296618638.37,,2026-11-20,Valentina Vera,MCO log(precio) conjunto Base (17)
 LM_completo,Regresión lineal,215584428.03,,2026-11-20,Valentina Vera,MCO log(precio) conjunto Completo (175)
+LGBM_completo_lr_0_017_hojas_66_prof_7_minhoja_23_rondas_4123,LightGBM,178605249.56,,2026-11-20,Valentina Vera,LightGBM L1 conjunto Completo (175); mejor de 30 ensayos (búsqueda aleatoria) con CV espacial
+LGBM_ampliado_lr_0_017_hojas_66_prof_7_minhoja_23_rondas_4994,LightGBM,194387125.17,,2026-11-20,Valentina Vera,Experimento: LightGBM L1 conjunto Ampliado (Completo + TF-IDF); mismos hiperparámetros que Completo
 
