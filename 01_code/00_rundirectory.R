@@ -64,7 +64,7 @@ source("01_code/06_create_cv_folds.R")
 # Cada script puede correrse solo, una vez corridos los scripts 01 a 06.
 
 source("01_code/07_model_linear_regression.R")
-# source("01_code/08_model_elastic_net.R")
+source("01_code/08_model_elastic_net.R")
 # source("01_code/09_model_cart.R")
 # source("01_code/10_model_random_forest.R")
 # Desactivado temporalmente: se actualiza a los conjuntos del 05.
