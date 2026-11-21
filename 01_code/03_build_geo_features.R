@@ -7,7 +7,9 @@
 # Etapa del Problem Set: Etapa 1: Understanding and Expanding the Data.
 # Insumos:  03_temp/train_clean.rds y 03_temp/test_clean.rds.
 # Salidas:  03_temp/train_geo.rds y 03_temp/test_geo.rds.
-#           Descargas guardadas en 03_temp/geo_cache/ para no repetirlas.
+#           Datos externos guardados en 00_data/external/geo_cache/ (en el
+#           repositorio): copia fija descargada entre el 16 y el 20 de
+#           noviembre de 2026. Solo se descarga lo que falte.
 #
 # Variables generadas (10) y su fuente:
 #   - dist_transmilenio_m: distancia a la estación troncal más cercana
@@ -35,6 +37,12 @@
 #   - Si las bases de salida ya existen, no se recalculan las ocho primeras
 #     variables (cambiar forzar_recalculo a TRUE para rehacerlas); el
 #     estrato se agrega aparte si todavía no está.
+#   - Reproducibilidad: OpenStreetMap cambia todos los días, así que una
+#     descarga en otra fecha daría variables distintas. Por eso las capas
+#     descargadas se guardan en el repositorio y el script las lee de ahí.
+#     La capa de estratificación se guarda reducida (solo el estrato y la
+#     geometría de cada manzana: 8 MB en lugar de 83 MB); da exactamente el
+#     mismo estrato para cada propiedad.
 ##########################################################
 
 # Objetos que ya existían en el entorno antes de correr este script. Al
@@ -46,7 +54,7 @@ source("01_code/functions/fun_geometrias.R")
 
 # Parametros --------------------------------------------------------------
 dir_temp <- "03_temp"
-dir_cache <- file.path(dir_temp, "geo_cache")
+dir_cache <- "00_data/external/geo_cache"
 radio_m <- 500
 crs_m <- 3116
 z_dem <- 12
@@ -253,7 +261,10 @@ test_geo <- readRDS(salida_test)
 if (forzar_recalculo || !"estrato_manzana" %in% names(train_geo) ||
     !"estrato_manzana" %in% names(test_geo)) {
   
-  archivo_estratos <- file.path(dir_cache, "estratificacion_manzanas.geojson")
+  # Versión reducida de la capa oficial: solo el estrato y la geometría de
+  # cada manzana (8 MB en lugar de 83 MB). Si no existe, se descarga la capa
+  # completa, se reduce y se guarda.
+  archivo_estratos <- file.path(dir_cache, "estratificacion_manzanas.rds")
   if (!file.exists(archivo_estratos)) {
     message("Descargando estratificacion oficial de Bogota...")
     # Recurso GeoJSON del portal Datos Abiertos Bogota (SDP).
@@ -261,17 +272,19 @@ if (forzar_recalculo || !"estrato_manzana" %in% names(train_geo) ||
     api <- paste0("https://datosabiertos.bogota.gov.co/api/3/action/resource_show?id=",
                   id_recurso)
     url <- jsonlite::fromJSON(api)$result$url
-    archivo_tmp <- paste0(archivo_estratos, ".part")
+    archivo_tmp <- tempfile(fileext = ".geojson")
     # El archivo pesa unos 83 MB: se amplía el tiempo máximo de descarga de
     # R (60 s por defecto) y luego se restaura el valor original.
     timeout_original <- options(timeout = max(1200, getOption("timeout")))
     utils::download.file(url, archivo_tmp, mode = "wb", quiet = TRUE)
     options(timeout_original)
-    if (!file.rename(archivo_tmp, archivo_estratos)) {
-      stop("No se pudo guardar la capa de estratificación.")
-    }
+    estratos_completo <- sf::st_read(archivo_tmp, quiet = TRUE)
+    campo <- grep("^estrato$", names(estratos_completo),
+                  ignore.case = TRUE, value = TRUE)[1]
+    saveRDS(estratos_completo[campo], archivo_estratos, compress = "xz")
+    unlink(archivo_tmp)
   }
-  estratos <- sf::st_read(archivo_estratos, quiet = TRUE)
+  estratos <- readRDS(archivo_estratos)
   campo_estrato <- grep("^estrato$", names(estratos),
                         ignore.case = TRUE, value = TRUE)[1]
   estratos <- sf::st_transform(estratos[campo_estrato], crs_m)
