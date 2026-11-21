@@ -16,7 +16,7 @@
 #           03_temp/oof_nn.rds (predicciones fuera de muestra).
 #
 # Decisiones:
-#   - Molde del curso (05_guide/02_NN_example_regression): keras secuencial,
+#   - Molde del curso (cuaderno 02_NN_example_regression): keras secuencial,
 #     capas densas y la tarea del cuaderno de probar mean_absolute_error
 #     además del MSE. El ejemplo del cuaderno es una red de juguete (2
 #     neuronas sigmoides, SGD, el lote completo) con 2 predictores. Con 174
@@ -70,18 +70,9 @@ grilla <- list(
 )
 
 # Paquetes y funciones -----------------------------------------------------
-# El virtualenv viejo de reticulate en esta máquina no arranca. Si existe
-# el entorno con TensorFlow, se usa ese Python.
-if (!nzchar(Sys.getenv("RETICULATE_PYTHON"))) {
-  candidatos_python <- c(
-    "D:/USUARIOS/USUARIO/Documents/.virtualenvs/r-keras/Scripts/python.exe",
-    path.expand("~/Documents/.virtualenvs/r-keras/Scripts/python.exe")
-  )
-  existente <- candidatos_python[file.exists(candidatos_python)]
-  if (length(existente) > 0) {
-    Sys.setenv(RETICULATE_PYTHON = existente[[1]])
-  }
-}
+# Keras usa Python a través de reticulate. Si R no encuentra el entorno
+# con TensorFlow, indique su ruta antes de correr el script, por ejemplo:
+# Sys.setenv(RETICULATE_PYTHON = "~/.virtualenvs/r-keras/bin/python")
 Sys.setenv(KERAS_BACKEND = "tensorflow", TF_CPP_MIN_LOG_LEVEL = "2")
 
 if (!require(pacman)) install.packages("pacman")
