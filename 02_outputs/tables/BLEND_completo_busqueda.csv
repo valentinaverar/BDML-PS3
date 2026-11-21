@@ -1,0 +1,2 @@
+"w_m2","w_precio","sesgo_millones","alpha_precio","lambda_precio","alpha_m2","lambda_m2","rondas_m2","mae_parecidas_sin_correccion","mae_parecidas_con_correccion"
+0.2,0.05,4.22853944063175,1,0.00140665563604999,0.5,0.00769869166995794,2689,126612497.010464,127581364.612762
