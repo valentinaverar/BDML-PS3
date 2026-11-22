@@ -72,7 +72,11 @@ source("01_code/11_model_boosting.R")
 source("01_code/11b_model_boosting_precio_m2.R")
 # Mezcla LightGBM + Elastic Net para extrapolar el precio en Chapinero.
 source("01_code/11c_model_blend_extrapolacion.R")
+# LightGBM de precio por m² con el precio de las viviendas vecinas.
+source("01_code/11d_model_boosting_vecinos.R")
 source("01_code/12_model_neural_network.R")
+# Mezcla del LightGBM de precio por m² (11b) con la red neuronal (12).
+source("01_code/11e_model_blend_red.R")
 
 # Bloque C: análisis para las presentaciones -------------------------------
 
