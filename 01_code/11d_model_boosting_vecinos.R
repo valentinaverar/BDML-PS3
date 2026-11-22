@@ -14,6 +14,9 @@
 # Salidas:  02_outputs/predictions/LGBM_completo_m2_vecinos_....csv (envío).
 #           Filas en 02_outputs/tables/registro_modelos.csv.
 #           03_temp/oof_lgbm_vecinos.rds (predicciones fuera de muestra).
+#           03_temp/LGBM_vecinos_<precio|m2>_modelo.txt (modelos finales).
+#           02_outputs/tables/LGBM_vecinos_importancia.csv (importancia por
+#           ganancia de los dos modelos finales, para el script 14).
 #
 # Decisiones:
 #   - Problema que se ataca: el modelo se queda corto en Chapinero porque
@@ -194,7 +197,8 @@ fun_predecir <- function(.filas_ajuste, .x_ajuste, .x_nuevo,
   #' @param .x_nuevo Matriz de predictores donde se predice (con vecinos).
   #' @param .superficie_nueva \code{numeric}. Superficie conocida (o NA).
   #'
-  #' @returns \code{numeric}: predicción híbrida en pesos, acotada.
+  #' @returns \code{numeric}: predicción híbrida en pesos, acotada, con los
+  #'   dos modelos en el atributo "modelos".
   conocidas <- which(.filas_ajuste %in% filas_m2)
   modelo_precio <- lightgbm::lgb.train(
     params = params,
@@ -209,7 +213,11 @@ fun_predecir <- function(.filas_ajuste, .x_ajuste, .x_nuevo,
   )
   pred_precio <- fun_acotar(stats::predict(modelo_precio, .x_nuevo))
   pred_m2 <- fun_acotar(stats::predict(modelo_m2, .x_nuevo) * .superficie_nueva)
-  ifelse(is.na(.superficie_nueva), pred_precio, pred_m2)
+  pred <- ifelse(is.na(.superficie_nueva), pred_precio, pred_m2)
+  # Se devuelven también los modelos para guardar los finales. En la CV no
+  # estorban: al asignar oof[val] <- pred, el atributo se descarta.
+  attr(pred, "modelos") <- list(precio = modelo_precio, m2 = modelo_m2)
+  pred
 }
 
 # Validación cruzada -------------------------------------------------------
@@ -258,8 +266,23 @@ vec_train <- fun_variables_vecinos(todas, xy_train, grupo_train)
 vec_test <- fun_variables_vecinos(todas, xy_test, grupo_test)
 pred_test <- fun_predecir(todas, cbind(x_train, vec_train),
                           cbind(x_test, vec_test), superficie_test)
-fun_save_submission(.ids = test$property_id, .pred = pred_test,
+fun_save_submission(.ids = test$property_id, .pred = as.numeric(pred_test),
                     .nombre = nombre)
+
+# Modelos finales e importancia (insumo del script 14). Se guardan los dos
+# modelos del híbrido: el de precio por m² predice el 56% de Chapinero
+# (superficie real) y el de precio total el resto.
+modelos_finales <- attr(pred_test, "modelos")
+for (modelo in names(modelos_finales)) {
+  lightgbm::lgb.save(modelos_finales[[modelo]],
+                     paste0("03_temp/LGBM_vecinos_", modelo, "_modelo.txt"))
+}
+importancia <- bind_rows(lapply(names(modelos_finales), function(.m) {
+  as.data.frame(lightgbm::lgb.importance(modelos_finales[[.m]])) |>
+    mutate(modelo = .m)
+}))
+utils::write.csv(importancia, "02_outputs/tables/LGBM_vecinos_importancia.csv",
+                 row.names = FALSE)
 
 # Resumen ------------------------------------------------------------------
 message("Distancia mediana a los ", k_vecinos, " vecinos con superficie ",
