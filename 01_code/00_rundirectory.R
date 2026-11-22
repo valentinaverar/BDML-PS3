@@ -77,6 +77,8 @@ source("01_code/11d_model_boosting_vecinos.R")
 source("01_code/12_model_neural_network.R")
 # Mezcla del LightGBM de precio por m² (11b) con la red neuronal (12).
 source("01_code/11e_model_blend_red.R")
+# Mezcla del LightGBM con vecinos (11d) con la red neuronal (12).
+source("01_code/11f_model_blend_vecinos_red.R")
 
 # Bloque C: análisis para las presentaciones -------------------------------
 
