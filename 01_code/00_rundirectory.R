@@ -92,5 +92,8 @@ source("01_code/11f_model_blend_vecinos_red.R")
 # source("01_code/15_spatial_validation.R")
 
 # Etapa 4: mejor modelo, errores y decisión de compra (deck best_equipo_03).
-# source("01_code/16_best_model_analysis.R")
-# source("01_code/17_business_decision.R")
+source("01_code/16_best_model_analysis.R")
+source("01_code/17_business_analysis.R")
+
+# Bloque D: diapositivas ---------------------------------------------------
+source("04_slides/compile_slides.R")
