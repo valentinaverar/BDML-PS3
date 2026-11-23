@@ -1,25 +1,52 @@
 ##########################################################
 # 03_build_geo_features.R
 #
-# Objetivo: construir predictores geograficos de cada inmueble.
-# Insumos: 03_temp/train_clean.rds y 03_temp/test_clean.rds.
-# Salidas: 03_temp/train_geo.rds y 03_temp/test_geo.rds.
-# Descargas: 03_temp/geo_cache/.
+# Objetivo: construir predictores del entorno de cada propiedad a partir de
+# fuentes externas (requisito: al menos cuatro).
 #
-# Variables:
-#   - dist_transmilenio_m
-#   - dist_via_principal_m
-#   - dist_centro_comercial_m
-#   - dist_parque_m
-#   - dist_universidad_m
-#   - num_restaurantes_cafes_500m
-#   - pct_zona_verde_500m
-#   - pendiente_terreno_pct
-#   - estrato_manzana (nuevo, fuente oficial SDP / Datos Abiertos Bogota)
+# Etapa del Problem Set: Etapa 1: Understanding and Expanding the Data.
+# Insumos:  03_temp/train_clean.rds y 03_temp/test_clean.rds.
+# Salidas:  03_temp/train_geo.rds y 03_temp/test_geo.rds.
+#           Datos externos guardados en 00_data/external/geo_cache/ (en el
+#           repositorio): copia fija descargada entre el 16 y el 20 de
+#           noviembre de 2026. Solo se descarga lo que falte.
 #
-# Si ya existen train_geo.rds y test_geo.rds, solo se agrega
-# estrato_manzana sin repetir los calculos de OSM y elevacion.
+# Variables generadas (10) y su fuente:
+#   - dist_transmilenio_m: distancia a la estación troncal más cercana
+#     (capa oficial de IDECA, Catastro Bogotá).
+#   - dist_via_principal_m, dist_centro_comercial_m, dist_parque_m,
+#     dist_universidad_m: distancia al elemento más cercano (OpenStreetMap).
+#   - num_restaurantes_cafes_500m: número de restaurantes y cafés a menos de
+#     500 m (OpenStreetMap).
+#   - pct_zona_verde_500m: porcentaje del círculo de 500 m cubierto por
+#     parques, jardines, bosques o pasto (OpenStreetMap).
+#   - pendiente_terreno_pct: pendiente del terreno en la ubicación, a partir
+#     de un modelo digital de elevación (paquete elevatr).
+#   - estrato_manzana: estrato socioeconómico oficial de la manzana donde
+#     está la propiedad (Secretaría Distrital de Planeación, portal Datos
+#     Abiertos Bogotá). NA si el punto no cae en una manzana estratificada.
+#   - dist_centro_empleo_m: distancia al centro de empleo más cercano
+#     (Centro Internacional, calle 72 o calle 93; coordenadas aproximadas).
+#
+# Decisiones:
+#   - Las distancias son en línea recta, no por la red de calles.
+#   - Se trabaja en un CRS proyectado (crs_m) para medir en metros.
+#   - Muchas propiedades comparten coordenadas, así que cada variable se
+#     calcula una sola vez por ubicación única y luego se asigna a todas las
+#     propiedades de esa ubicación.
+#   - Si las bases de salida ya existen, no se recalculan las ocho primeras
+#     variables (cambiar forzar_recalculo a TRUE para rehacerlas); el
+#     estrato se agrega aparte si todavía no está.
+#   - Reproducibilidad: OpenStreetMap cambia todos los días, así que una
+#     descarga en otra fecha daría variables distintas. Por eso las capas
+#     descargadas se guardan en el repositorio y el script las lee de ahí.
+#     La capa de estratificación se guarda reducida (solo el estrato y la
+#     geometría de cada manzana: 8 MB en lugar de 83 MB); da exactamente el
+#     mismo estrato para cada propiedad.
 ##########################################################
+
+# Objetos que ya existían en el entorno antes de correr este script. Al
+# final se borra solo lo que este script creó, sin tocar lo demás.
 objetos_previos <- ls()
 
 source("01_code/functions/fun_osm.R")
@@ -27,7 +54,7 @@ source("01_code/functions/fun_geometrias.R")
 
 # Parametros --------------------------------------------------------------
 dir_temp <- "03_temp"
-dir_cache <- file.path(dir_temp, "geo_cache")
+dir_cache <- "00_data/external/geo_cache"
 radio_m <- 500
 crs_m <- 3116
 z_dem <- 12
@@ -225,7 +252,7 @@ if (!forzar_recalculo && file.exists(salida_train) && file.exists(salida_test)) 
   ), row.names = FALSE)
 }
 
-# 6. NUEVO: estrato oficial de la manzana -------------------------------
+# 6. Estrato oficial de la manzana ----------------------------------------
 # Se puede ejecutar sobre los RDS existentes, sin recalcular las 8
 # variables anteriores. Fuente: Secretaria Distrital de Planeacion.
 train_geo <- readRDS(salida_train)
@@ -234,7 +261,10 @@ test_geo <- readRDS(salida_test)
 if (forzar_recalculo || !"estrato_manzana" %in% names(train_geo) ||
     !"estrato_manzana" %in% names(test_geo)) {
   
-  archivo_estratos <- file.path(dir_cache, "estratificacion_manzanas.geojson")
+  # Versión reducida de la capa oficial: solo el estrato y la geometría de
+  # cada manzana (8 MB en lugar de 83 MB). Si no existe, se descarga la capa
+  # completa, se reduce y se guarda.
+  archivo_estratos <- file.path(dir_cache, "estratificacion_manzanas.rds")
   if (!file.exists(archivo_estratos)) {
     message("Descargando estratificacion oficial de Bogota...")
     # Recurso GeoJSON del portal Datos Abiertos Bogota (SDP).
@@ -242,11 +272,19 @@ if (forzar_recalculo || !"estrato_manzana" %in% names(train_geo) ||
     api <- paste0("https://datosabiertos.bogota.gov.co/api/3/action/resource_show?id=",
                   id_recurso)
     url <- jsonlite::fromJSON(api)$result$url
-    archivo_tmp <- paste0(archivo_estratos, ".part")
+    archivo_tmp <- tempfile(fileext = ".geojson")
+    # El archivo pesa unos 83 MB: se amplía el tiempo máximo de descarga de
+    # R (60 s por defecto) y luego se restaura el valor original.
+    timeout_original <- options(timeout = max(1200, getOption("timeout")))
     utils::download.file(url, archivo_tmp, mode = "wb", quiet = TRUE)
-    file.rename(archivo_tmp, archivo_estratos)
+    options(timeout_original)
+    estratos_completo <- sf::st_read(archivo_tmp, quiet = TRUE)
+    campo <- grep("^estrato$", names(estratos_completo),
+                  ignore.case = TRUE, value = TRUE)[1]
+    saveRDS(estratos_completo[campo], archivo_estratos, compress = "xz")
+    unlink(archivo_tmp)
   }
-  estratos <- sf::st_read(archivo_estratos, quiet = TRUE)
+  estratos <- readRDS(archivo_estratos)
   campo_estrato <- grep("^estrato$", names(estratos),
                         ignore.case = TRUE, value = TRUE)[1]
   estratos <- sf::st_transform(estratos[campo_estrato], crs_m)
@@ -278,5 +316,50 @@ if (forzar_recalculo || !"estrato_manzana" %in% names(train_geo) ||
   message("estrato_manzana ya existe. No se recalcula.")
 }
 
-rm(list = setdiff(ls(), c(objetos_previos, "fun_osm", "fun_geometrias")))
+# 7. Distancia al centro de empleo más cercano ---------------------------
+# Se agrega sobre los RDS existentes, sin recalcular lo anterior. Bogotá
+# tiene varios centros de oficinas (ciudad policéntrica); en el modelo
+# monocéntrico de economía urbana, el precio cae con la distancia al
+# empleo. Coordenadas aproximadas de tres centros de oficinas.
+train_geo <- readRDS(salida_train)
+test_geo <- readRDS(salida_test)
 
+if (forzar_recalculo || !"dist_centro_empleo_m" %in% names(train_geo) ||
+    !"dist_centro_empleo_m" %in% names(test_geo)) {
+  
+  centros_empleo <- data.frame(
+    centro = c("Centro Internacional", "Calle 72", "Calle 93"),
+    lon = c(-74.0705, -74.0560, -74.0482),
+    lat = c(4.6145, 4.6577, 4.6765)
+  )
+  centros <- sf::st_transform(
+    sf::st_as_sf(centros_empleo, coords = c("lon", "lat"), crs = 4326), crs_m)
+  
+  # Cálculo una sola vez por ubicación única de train y test.
+  ubicaciones <- unique(rbind(train_geo[c("lon", "lat")],
+                              test_geo[c("lon", "lat")]))
+  puntos_u <- sf::st_transform(
+    sf::st_as_sf(ubicaciones, coords = c("lon", "lat"), crs = 4326), crs_m)
+  distancia_centros <- sf::st_distance(puntos_u, centros)
+  dist_centro_empleo <- apply(matrix(as.numeric(distancia_centros),
+                                     ncol = nrow(centros)), 1, min)
+  
+  clave <- function(x) paste(x$lon, x$lat, sep = "|")
+  train_geo$dist_centro_empleo_m <- dist_centro_empleo[
+    match(clave(train_geo), clave(ubicaciones))]
+  test_geo$dist_centro_empleo_m <- dist_centro_empleo[
+    match(clave(test_geo), clave(ubicaciones))]
+  
+  saveRDS(train_geo, salida_train)
+  saveRDS(test_geo, salida_test)
+  message("Distancia al centro de empleo agregada. Mediana: train = ",
+          round(median(train_geo$dist_centro_empleo_m)), " m; test = ",
+          round(median(test_geo$dist_centro_empleo_m)), " m.")
+} else {
+  message("dist_centro_empleo_m ya existe. No se recalcula.")
+}
+
+# Limpiamos el entorno: borramos solo los objetos que creó este script.
+# Todo lo necesario quedó guardado en 03_temp/. Conservamos las funciones
+# de OSM por si otro script las necesita.
+rm(list = setdiff(ls(), c(objetos_previos, "fun_osm", "fun_geometrias")))

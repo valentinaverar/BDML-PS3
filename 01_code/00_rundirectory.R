@@ -40,43 +40,57 @@ dir.create("03_temp", showWarnings = FALSE)
 # Bloque A: datos (Etapa 1) ------------------------------------------------
 
 # Obtiene los datos crudos de Kaggle (ver README, sección Datos).
- source("01_code/01_get_data.R")
+source("01_code/01_get_data.R")
 
 # Limpia la base de propiedades (train y test).
 source("01_code/02_clean_data.R")
 
-# Predictores externos de OpenStreetMap (mínimo 4).
+# Predictores externos: OSM, IDECA (TransMilenio), modelo de elevación y
+# estrato por manzana (Datos Abiertos Bogotá).
 source("01_code/03_build_geo_features.R")
 
-
-# Predictores a partir del título y la descripción del anuncio (mínimo 4).
+# Predictores a partir del título y la descripción del anuncio.
 source("01_code/04_build_text_features.R")
 
-# Distribución de precios, faltantes y diferencias de Chapinero.
-# source("01_code/05_descriptive_analysis.R")
+# Imputación de faltantes y conjuntos de predictores (base, completo y
+# ampliado).
+source("01_code/05_build_model_data.R")
 
-# Particiones de validación cruzada (aleatoria y espacial) compartidas por
-# todos los modelos.
-# source("01_code/06_create_cv_folds.R")
+# Similitud con Chapinero y particiones de validación cruzada (aleatoria y
+# espacial) compartidas por todos los modelos.
+source("01_code/06_create_cv_folds.R")
 
 # Bloque B: modelos (Etapa 2; cada script genera sus envíos a Kaggle) -----
 # Cada script puede correrse solo, una vez corridos los scripts 01 a 06.
 
-# source("01_code/07_model_linear_regression.R")
-# source("01_code/08_model_elastic_net.R")
+source("01_code/07_model_linear_regression.R")
+source("01_code/08_model_elastic_net.R")
 # source("01_code/09_model_cart.R")
 # source("01_code/10_model_random_forest.R")
 source("01_code/11_model_boosting.R")
-# source("01_code/12_model_neural_network.R")
+# LightGBM que predice el precio por m² (donde la superficie es real).
+source("01_code/11b_model_boosting_precio_m2.R")
+# Mezcla LightGBM + Elastic Net para extrapolar el precio en Chapinero.
+source("01_code/11c_model_blend_extrapolacion.R")
+# LightGBM de precio por m² con el precio de las viviendas vecinas.
+source("01_code/11d_model_boosting_vecinos.R")
+source("01_code/12_model_neural_network.R")
+# Mezcla del LightGBM de precio por m² (11b) con la red neuronal (12).
+source("01_code/11e_model_blend_red.R")
+# Mezcla del LightGBM con vecinos (11d) con la red neuronal (12).
+source("01_code/11f_model_blend_vecinos_red.R")
 
 # Bloque C: análisis para las presentaciones -------------------------------
 
+# Etapa 1: distribución de precios, faltantes y diferencias de Chapinero.
+# source("01_code/13_descriptive_analysis.R")
+
 # Etapa 2: comparación de algoritmos (deck compare_equipo_03).
-# source("01_code/13_compare_algorithms.R")
+# source("01_code/14_compare_algorithms.R")
 
 # Etapa 3: validación espacial frente a la aleatoria y frente a Kaggle.
-# source("01_code/14_spatial_validation.R")
+# source("01_code/15_spatial_validation.R")
 
 # Etapa 4: mejor modelo, errores y decisión de compra (deck best_equipo_03).
-# source("01_code/15_best_model_analysis.R")
-# source("01_code/16_business_decision.R")
+# source("01_code/16_best_model_analysis.R")
+# source("01_code/17_business_decision.R")

@@ -70,7 +70,9 @@ fun_registrar_modelo <- function(.fila,
 }
 
 fun_registrar_cv <- function(.archivo, .algoritmo, .conjunto, .n_predictores,
-                             .hiperparametros, .tipo_cv, .obs, .pred) {
+                             .hiperparametros, .tipo_cv, .obs, .pred,
+                             .prop_similares = 0.10,
+                             .ruta_similitud = "03_temp/similitud_chapinero.rds") {
   #' Registrar una variante a partir de sus predicciones fuera de muestra
   #'
   #' @description \code{fun_registrar_cv()} calcula las métricas de
@@ -78,6 +80,14 @@ fun_registrar_cv <- function(.archivo, .algoritmo, .conjunto, .n_predictores,
   #' y la agrega a la tabla de registro con \code{fun_registrar_modelo()}.
   #' Así todos los algoritmos quedan en la misma tabla y se pueden comparar,
   #' tanto entre sí como contra su puntaje en Kaggle.
+  #'
+  #' Además calcula el MAE y el sesgo solo en las propiedades de train más
+  #' similares a Chapinero (similitud del script 06, un propensity score que
+  #' no usa coordenadas, nombres de barrios ni el precio). El MAE de toda la
+  #' CV promedia el error de todo Bogotá, donde hay muchas viviendas más
+  #' baratas que en Chapinero; como el MAE se mide en pesos, ese promedio
+  #' subestima el error en Chapinero. El MAE en las similares es una mejor
+  #' aproximación (aunque todavía un límite inferior) del error en el test.
   #'
   #' @param .archivo \code{character}. Nombre del envío (sin .csv).
   #' @param .algoritmo \code{character}. Nombre del algoritmo.
@@ -87,11 +97,35 @@ fun_registrar_cv <- function(.archivo, .algoritmo, .conjunto, .n_predictores,
   #' hiperparámetros.
   #' @param .tipo_cv \code{character}. "aleatoria" o "espacial", para
   #' comparar ambos esquemas en la Etapa 3.
-  #' @param .obs \code{numeric}. Precio observado.
+  #' @param .obs \code{numeric}. Precio observado (en el orden de train).
   #' @param .pred \code{numeric}. Precio predicho fuera de muestra.
+  #' @param .prop_similares \code{numeric}. Fracción de train más similar a
+  #' Chapinero en la que se mide el error adicional.
+  #' @param .ruta_similitud \code{character}. Archivo con la similitud de
+  #' cada propiedad de train (script 06). Si no existe, las columnas
+  #' adicionales quedan en NA.
   #'
   #' @returns La tabla de registro actualizada (invisible).
   metricas <- fun_metricas_regresion(.obs, .pred)
+  
+  # Error en las propiedades más similares a Chapinero.
+  metricas_similares <- tibble(mae_similares_chapinero = NA_real_,
+                               sesgo_similares_chapinero = NA_real_)
+  if (file.exists(.ruta_similitud)) {
+    similitud <- readRDS(.ruta_similitud)$similitud
+    if (length(similitud) != length(.obs)) {
+      stop("La similitud tiene ", length(similitud), " filas y las ",
+           "predicciones ", length(.obs), ". Corra de nuevo el script 06.",
+           call. = FALSE)
+    }
+    similares <- similitud >= stats::quantile(similitud, 1 - .prop_similares)
+    error_similares <- .pred[similares] - .obs[similares]
+    metricas_similares <- tibble(
+      mae_similares_chapinero = mean(abs(error_similares)),
+      sesgo_similares_chapinero = mean(error_similares)
+    )
+  }
+  
   fun_registrar_modelo(bind_cols(
     tibble(
       archivo = .archivo,
@@ -102,6 +136,7 @@ fun_registrar_cv <- function(.archivo, .algoritmo, .conjunto, .n_predictores,
       tipo_cv = .tipo_cv
     ),
     metricas,
+    metricas_similares,
     tibble(fecha = as.character(Sys.Date()))
   ))
 }
