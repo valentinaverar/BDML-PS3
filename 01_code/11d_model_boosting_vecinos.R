@@ -16,7 +16,7 @@
 #           03_temp/oof_lgbm_vecinos.rds (predicciones fuera de muestra).
 #           03_temp/LGBM_vecinos_<precio|m2>_modelo.txt (modelos finales).
 #           02_outputs/tables/LGBM_vecinos_importancia.csv (importancia por
-#           ganancia de los dos modelos finales, para el script 14).
+#           ganancia de los dos modelos finales, para el script 16).
 #
 # Decisiones:
 #   - Problema que se ataca: el modelo se queda corto en Chapinero porque
@@ -269,7 +269,7 @@ pred_test <- fun_predecir(todas, cbind(x_train, vec_train),
 fun_save_submission(.ids = test$property_id, .pred = as.numeric(pred_test),
                     .nombre = nombre)
 
-# Modelos finales e importancia (insumo del script 14). Se guardan los dos
+# Modelos finales e importancia (insumo del script 16). Se guardan los dos
 # modelos del híbrido: el de precio por m² predice el 56% de Chapinero
 # (superficie real) y el de precio total el resto.
 modelos_finales <- attr(pred_test, "modelos")

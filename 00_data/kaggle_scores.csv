@@ -1,14 +1,14 @@
 archivo,algoritmo,puntaje_publico,puntaje_privado,fecha_envio,integrante,descripcion
 LM_base,Regresión lineal,296618638.37,,2026-11-20,Valentina Vera,MCO log(precio) conjunto Base (17)
-LM_completo,Regresión lineal,215584428.03,,2026-11-20,Valentina Vera,MCO log(precio) conjunto Completo (175)
-LGBM_completo_lr_0_017_hojas_66_prof_7_minhoja_23_rondas_4123,LightGBM,178605249.56,,2026-11-20,Valentina Vera,LightGBM L1 conjunto Completo (175); mejor de 30 ensayos (búsqueda aleatoria) con CV espacial
+LM_completo,Regresión lineal,215584428.03,,2026-11-20,Valentina Vera,MCO log(precio) conjunto Completo (174)
+LGBM_completo_lr_0_017_hojas_66_prof_7_minhoja_23_rondas_4123,LightGBM,178605249.56,,2026-11-20,Valentina Vera,LightGBM L1 conjunto Completo (174); mejor de 30 ensayos (búsqueda aleatoria) con CV espacial
 LGBM_ampliado_lr_0_017_hojas_66_prof_7_minhoja_23_rondas_4994,LightGBM,194387125.17,,2026-11-20,Valentina Vera,Experimento: LightGBM L1 conjunto Ampliado (Completo + TF-IDF); mismos hiperparámetros que Completo
 LM_BASIC,Regresión lineal,264400000,,2026-11-19,Andrés Silva,"MCO exploratorio anterior al script 07. La especificación exacta no quedó en el repositorio; el puntaje público reportado es 264.4 millones."
 LGBM_lr_00318_leaves_80_depth_10_minleaf_27_ff_0748_bf_0901_l1_1130_l2_1328,LightGBM,205200000,,2026-11-19,Andrés Silva,"Exploratorio anterior al conjunto Completo: LightGBM con pérdida L1 sobre el precio en pesos, 12 predictores a mano (estrato, superficies, cuartos, baños, latitud, longitud y señales de texto) y búsqueda bayesiana. Puntaje público reportado 205.2 millones."
 LGBM_completo_m2_lr_0_017_hojas_66_rondas_2689,LightGBM precio m2,169160077.04,,2026-11-20,Valentina Vera,LightGBM L1 híbrido: precio por m² x superficie donde es real; precio total donde es imputada; hiperparámetros del 11
 EN_ampliado_alpha_1_lambda_0_0027,Elastic Net,199734537.74,,2026-11-20,Valentina Vera,Experimento: Lasso log(precio) conjunto Ampliado (Completo + TF-IDF); alpha y lambda con CV espacial
 BLEND_completo_wm2_0_20_wp_0_05_sesgo_menos_2,Híbrido LGBM-EN,168398836.90,,2026-11-20,Julián Herrera,"Mezcla LightGBM precio por m² + Elastic Net (pesos 0,20 y 0,05) con corrección de sesgo. Generado en el computador de Julián; el archivo del repo (…_sesgo_4) se regeneró con los datos fijos y difiere solo en la corrección de sesgo"
-NN_completo_capas_256_128_64_drop_0_30_lr_0_001_ep_49,Red neuronal,180005933.29,,2026-11-20,Julián Herrera,Perceptrón 256-128-64 con atajo lineal, dropout 0,3, 49 épocas; arquitectura elegida con CV espacial
+NN_completo_capas_256_128_64_drop_0_30_lr_0_001_ep_49,Red neuronal,180005933.29,,2026-11-20,Julián Herrera,"Perceptrón 256-128-64 con atajo lineal, dropout 0,3, 49 épocas; arquitectura elegida con CV espacial"
 EN_completo_a_1_l_0_000382,Elastic Net,213590379.00,,2026-11-20,Julián Herrera,"Exploratorio: Lasso log(precio) conjunto Completo, corrido en el computador de Julián; su código está en la rama Sapotrucha (commit e656121), no en main"
 LGBM_completo_m2_vecinos_k10_lr_0_017_hojas_66_rondas_2689,LightGBM precio m2 + vecinos,166725200.45,,2026-11-21,Valentina Vera,"LightGBM híbrido (11b) + rezago espacial del precio: mediana del precio por m² y del precio de los 10 vecinos de train, y su distancia"
 BLEND_m2_red_w_0_25,Mezcla LGBM-red,167102030.54,,2026-11-21,Valentina Vera,"Mezcla 75% LightGBM precio por m² (11b) + 25% red neuronal (12); peso elegido con CV espacial"
