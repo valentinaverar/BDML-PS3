@@ -1,0 +1,23 @@
+
+\begin{tabular}{lll}
+\toprule
+Modelo & Kaggle publico & CV espacial\\
+\midrule
+BLEND: LGBM vecinos + red & 164.53 & 128.58\\
+LGBM m2 + vecinos & 166.73 & 133.96\\
+BLEND: LGBM m2 + red & 167.10 & 125.73\\
+BLEND: LGBM + Elastic Net & 168.16 & 128.39\\
+LGBM por m2 & 169.16 & 128.72\\
+\addlinespace
+LGBM vecinos (min. 200 m) & 169.17 & s/d\\
+Random Forest & 174.74 & s/d\\
+LGBM completo & 178.61 & 129.35\\
+Red neuronal & 180.01 & 138.60\\
+LGBM + TF-IDF & 194.39 & 129.49\\
+\addlinespace
+Elastic Net + TF-IDF & 199.73 & 143.82\\
+CART & 208.28 & s/d\\
+Regresion lineal completa & 215.58 & 157.06\\
+Regresion lineal base & 296.62 & 189.61\\
+\bottomrule
+\end{tabular}

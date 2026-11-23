@@ -14,3 +14,5 @@ LGBM_completo_m2_vecinos_k10_lr_0_017_hojas_66_rondas_2689,LightGBM precio m2 + 
 BLEND_m2_red_w_0_25,Mezcla LGBM-red,167102030.54,,2026-11-21,Valentina Vera,"Mezcla 75% LightGBM precio por m² (11b) + 25% red neuronal (12); peso elegido con CV espacial"
 BLEND_completo_wm2_0_20_wp_0_05_sesgo_4,Híbrido LGBM-EN,168160184.61,,2026-11-21,Valentina Vera,"Mezcla LightGBM precio por m² + Elastic Net (11c) regenerada con los datos fijos; versión reproducible del envío de Julián"
 BLEND_vecinos_red_w_0_25,Mezcla LGBM vecinos-red,164527060.57,,2026-11-21,Valentina Vera,"Mezcla 75% LightGBM precio por m² con vecinos (11d) + 25% red neuronal (12); peso del 11e"
+CART_completo_m2_cp_0_0001_minbucket_100,Árbol CART,208283061.12,,2026-11-22,Julián Herrera,"Árbol CART, conjunto Completo (174). Donde la superficie es real, se predice el precio por m² y se multiplica por la superficie; cp=0.0001; minbucket=100"
+RF_completo_m2_mtry_60_minnodo_5_arboles_500,Random Forest,174738022.79,,2026-11-22,Julián Herrera,"Random Forest (ranger), conjunto Completo (174). Donde la superficie es real, se predice el precio por m²; mtry=60; mínimo nodo=5; árboles=500"

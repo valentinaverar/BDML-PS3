@@ -1,0 +1,331 @@
+% Algorithm Comparison (PS3). Estilo visual de la presentacion PS2.
+% Compilar con: source("04_slides/compile_slides.R") desde la raiz.
+% Los numeros y graficos se generan en 01_code/14_compare_algorithms.R.
+\documentclass[aspectratio=169,10pt]{beamer}
+\usepackage{fontspec}
+\setmainfont{Carlito}
+\setsansfont{Carlito}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{graphicx,booktabs,array,tabularx,colortbl}
+\usepackage{xcolor}
+\definecolor{azulPS}{HTML}{2F5FA8}
+\definecolor{tintaPS}{HTML}{293B44}
+\definecolor{grisPS}{HTML}{61717B}
+\definecolor{fondoPS}{HTML}{E4E7E9}
+\setbeamercolor{normal text}{fg=tintaPS,bg=white}
+\setbeamercolor{frametitle}{fg=white,bg=azulPS}
+\setbeamercolor{structure}{fg=azulPS}
+\setbeamerfont{frametitle}{family=\sffamily,series=\bfseries,size=\large}
+\setbeamerfont{normal text}{size=\small}
+\setbeamertemplate{navigation symbols}{}
+\setbeamersize{text margin left=.65cm,text margin right=.65cm}
+\setbeamertemplate{frametitle}{%
+ \nointerlineskip
+ \begin{beamercolorbox}[wd=\paperwidth,ht=.42cm,dp=.15cm,leftskip=.48cm]{frametitle}
+  \usebeamerfont{frametitle}\insertframetitle
+ \end{beamercolorbox}}
+\setbeamertemplate{footline}{\hfill\color{tintaPS}\scriptsize\insertframenumber/14\hspace{.32cm}\vspace{.17cm}}
+\setbeamertemplate{itemize item}{\raisebox{.08ex}{\tiny\textbullet}}
+\setbeamertemplate{enumerate item}{\insertenumlabel.}
+\newcommand{\fuente}[1]{\par{\fontsize{7}{8}\selectfont\color{grisPS}#1}}
+\newcommand{\grafico}[2]{\includegraphics[width=\linewidth,height=#2,keepaspectratio]{../02_outputs/figures/#1.pdf}}
+\newcommand{\nota}[1]{\par\medskip{\small #1}}
+\newcommand{\cabeceraTabla}{\arrayrulecolor{tintaPS}\toprule}
+\newcommand{\cierreTabla}{\bottomrule}
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.18}
+\input{../02_outputs/tables/compare_metricas.tex}
+\begin{document}
+
+% 1: Comienza con el mejor modelo, sin portada, segun el enunciado.
+\begin{frame}[t]{Mejor modelo: BLEND de LightGBM y red neuronal}
+\vspace{.20cm}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{.48\textwidth}
+\colorbox{fondoPS}{\parbox{.97\linewidth}{\vspace{.10cm}\bfseries Especificación\vspace{.10cm}}}
+\vspace{.10cm}
+\begin{itemize}\setlength\itemsep{.20cm}
+\item 75\,\% LightGBM híbrido + 25\,\% red neuronal.
+\item LightGBM combina precio por m$^2$, superficie y precios de 10 vecinos.
+\item La red tiene tres capas ocultas: 256, 128 y 64 neuronas.
+\item Peso elegido con CV espacial, sin vecinos.
+\end{itemize}
+\vspace{.07cm}
+\begin{center}
+{\fontsize{26}{27}\selectfont\color{azulPS}\bfseries \MAEBlend\,M}\par
+{\small MAE en Kaggle (tabla pública)}\par
+{\scriptsize CV espacial: \CVBlendEspacial\,M \quad CV aleatoria: \CVBlendAleatoria\,M}
+\end{center}
+\end{column}
+\begin{column}{.49\textwidth}
+\colorbox{fondoPS}{\parbox{.97\linewidth}{\vspace{.10cm}\bfseries Lo que muestra la comparación\vspace{.10cm}}}
+\vspace{.12cm}
+\begin{enumerate}\setlength\itemsep{.23cm}
+\item \textbf{El modelo importa:} el BLEND supera a Random Forest (\MAERF\,M) y al LightGBM completo (\MAELGBM\,M) en Kaggle.
+\item \textbf{Las transformaciones importan:} modelar precio por m$^2$ y añadir vecinos mejora al LightGBM completo.
+\item \textbf{Combinar predicciones ayuda:} añadir la red reduce el MAE público del LightGBM con vecinos en \GainBlend\,M.
+\end{enumerate}
+\end{column}
+\end{columns}
+\vfill
+\fuente{Fuente: kaggle\_scores.csv y registro\_modelos.csv. MAE en millones de COP.}
+\end{frame}
+
+% 2: Datos de la competencia.
+\begin{frame}[t]{Datos: predecir precios en Chapinero sin observarlos en train}
+\vspace{.38cm}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{.49\textwidth}
+\begin{tabular}{@{}lrr@{}}
+\cabeceraTabla & \textbf{Train} & \textbf{Test} \\ \midrule
+Propiedades & 38.644 & 10.286 \\
+Zona & Resto Bogotá & Chapinero \\
+Precio & Sí & No \\
+\multicolumn{3}{l}{Objetivo: precio de venta (COP)}\\
+\multicolumn{3}{l}{Métrica: MAE en pesos}\\
+\cierreTabla
+\end{tabular}
+\vspace{.25cm}
+\fuente{Competencia PS3 de MECA 4107; cifras de las bases del proyecto.}
+\end{column}
+\begin{column}{.47\textwidth}
+\begin{itemize}\setlength\itemsep{.22cm}
+\item No buscamos acertar en viviendas al azar: el test se concentra en Chapinero.
+\item La información del resto de Bogotá ayuda, pero hay diferencias espaciales de precios y características.
+\item El MAE penaliza errores en pesos: equivocarse en una vivienda cara cuesta más.
+\item La pregunta es qué modelo predice mejor \emph{fuera de las zonas donde aprendió}.
+\end{itemize}
+\end{column}
+\end{columns}
+\end{frame}
+
+% 3: Variables.
+\begin{frame}[t]{Predictores: información de la vivienda, del entorno y del anuncio}
+\vspace{.29cm}
+\small
+\begin{tabularx}{\textwidth}{@{}p{1.6cm}Xr@{}}
+\cabeceraTabla \textbf{Conjunto} & \textbf{Qué agrega} & \textbf{Variables} \\ \midrule
+Base & Superficie, cuartos, baños, tipo, ubicación, fecha e indicadores de calidad. & \NBase \\[.12cm]
+Completo & + estrato por manzana, TransMilenio, parques, universidades, pendiente, distancias y señales extraídas del texto. & \NCompleto \\[.12cm]
+Ampliado & + 12.000 términos TF-IDF (unigramas y bigramas de la descripción). & \NAmpliado \\
+\cierreTabla
+\end{tabularx}
+\vspace{.46cm}
+\colorbox{fondoPS}{\parbox{.96\textwidth}{\vspace{.12cm}\textbf{Hipótesis que podemos contrastar}\par\smallskip Más información puede reducir el error, pero no necesariamente: texto de alta dimensión añade ruido y cuesta más estimarlo. La comparación debe distinguir qué variables y qué algoritmo cambiaron.\vspace{.10cm}}}
+\vfill\fuente{Fuente: conjuntos\_predictores.csv y scripts de preparación del repositorio PS3.}
+\end{frame}
+
+% 4: Tabla de algoritmos.
+\begin{frame}[t]{Seis familias de modelos y el ensamble final}
+\vspace{.25cm}
+\begin{tabularx}{\textwidth}{@{}p{2.45cm}Xr@{}}
+\cabeceraTabla \textbf{Familia} & \textbf{Variante con mejor envío público disponible} & \textbf{MAE Kaggle} \\ \midrule
+Regresión lineal & MCO, conjunto completo & \MAELM\,M \\
+Elastic Net & Texto TF-IDF, conjunto ampliado & \MAEEN\,M \\
+CART & Árbol con precio por m$^2$ & \MAECART\,M \\
+Random Forest & Bosque con precio por m$^2$ & \MAERF\,M \\
+LightGBM & Precio por m$^2$ + vecinos & \MAEVecinos\,M \\
+Red neuronal & Capas 256--128--64 & \MAERed\,M \\
+\rowcolor{fondoPS}\textbf{BLEND} & \textbf{LightGBM con vecinos + red (75/25)} & \textbf{\MAEBlend\,M} \\
+\cierreTabla
+\end{tabularx}
+\vspace{.28cm}
+\nota{\textbf{Lectura:} el menor puntaje es del BLEND, pero las mejores variantes de cada familia no necesariamente usan la misma información ni la misma transformación del objetivo.}
+\fuente{Fuente: Kaggle, puntaje público registrado en kaggle\_scores.csv.}
+\end{frame}
+
+% 5: Comparacion entre familias.
+\begin{frame}[t]{Con el conjunto completo: Random Forest lidera la comparación inicial}
+\vspace{.15cm}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{.63\textwidth}
+\grafico{compare_01_familias}{5.45cm}
+\end{column}
+\begin{column}{.33\textwidth}
+\vspace{.25cm}
+\begin{itemize}\setlength\itemsep{.20cm}
+\item RF: \MAERF\,M, menor MAE público entre estas versiones.
+\item LightGBM: \MAELGBM\,M; red: \MAERed\,M.
+\item CART, Elastic Net y MCO obtienen errores mayores.
+\end{itemize}
+\vspace{.18cm}
+\textcolor{azulPS}{\small\textbf{No basta decir ``boosting gana'':}} el liderazgo cambia cuando modificamos el objetivo y añadimos vecinos.
+\end{column}
+\end{columns}
+\vfill
+\fuente{Mismo conjunto completo de variables estructuradas. RF y CART modelan precio por m$^2$; otros, precio total. Comparación orientativa, no experimento puro de algoritmo.}
+\end{frame}
+
+% 6: Comparacion de features.
+\begin{frame}[t]{Más variables ayudan, pero no siempre de la misma forma}
+\vspace{.13cm}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{.63\textwidth}
+\grafico{compare_02_predictores}{5.48cm}
+\end{column}
+\begin{column}{.33\textwidth}
+\vspace{.19cm}
+\begin{itemize}\setlength\itemsep{.21cm}
+\item En MCO, pasar de \NBase{} a \NCompleto{} variables reduce el MAE en \GainMCO\,M.
+\item Elastic Net mejora con TF-IDF: 213,59 a \MAEEN\,M.
+\item LightGBM empeora al añadir TF-IDF: \MAELGBM{} a \MAETFIDFLGBM\,M.
+\end{itemize}
+\smallskip
+\textcolor{azulPS}{\textbf{Conclusión:}} más predictores no garantizan menor error.
+\end{column}
+\end{columns}
+\vfill
+\fuente{Fuente: puntajes públicos. Variantes de Elastic Net tienen ajustes distintos; diferencias no aíslan causalmente el efecto de TF-IDF.}
+\end{frame}
+
+% 7: Evolucion del modelo.
+\begin{frame}[t]{LightGBM mejora al cambiar el objetivo y combinar predicciones}
+\vspace{.25cm}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{.67\textwidth}
+\grafico{compare_03_evolucion}{5.30cm}
+\end{column}
+\begin{column}{.29\textwidth}
+\begin{enumerate}\setlength\itemsep{.28cm}
+\item Precio por m$^2$: cuando conocemos superficie real, predecimos precio unitario.
+\item Vecinos: añadimos información de precios de otras propiedades.
+\item BLEND: combinamos errores parcialmente distintos.
+\end{enumerate}
+\medskip
+\textcolor{azulPS}{\textbf{Ganancia total observada: \GainTotal\,M}} frente al LightGBM completo.
+\end{column}
+\end{columns}
+\vfill
+\fuente{Fuente: Kaggle público. Secuencia de variantes desarrolladas; no experimento causal ni garantía de generalización.}
+\end{frame}
+
+% 8: Vecinos.
+\begin{frame}[t]{A fondo: los vecinos ayudan, pero excluir cercanos no ayudó}
+\vspace{.20cm}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{.63\textwidth}
+\grafico{compare_04_vecinos}{4.6cm}
+\end{column}
+\begin{column}{.33\textwidth}
+\vspace{.10cm}
+\begin{itemize}\setlength\itemsep{.24cm}
+\item Agregar vecinos reduce el MAE de \MAEMdos{} a \MAEVecinos\,M.
+\item Excluir referencias a menos de 200 m lo sube a \MAEDmin\,M.
+\item La cercanía contiene señal valiosa; también exige vigilar anuncios duplicados y filtraciones.
+\end{itemize}
+\end{column}
+\end{columns}
+\vspace{.04cm}
+\nota{\textbf{Precaución:} en CV, el precio de los vecinos debe provenir únicamente del subconjunto de entrenamiento del fold.}
+\fuente{Fuente: tres envíos LightGBM por m$^2$ en Kaggle, script 11d y variante dmin = 200 m.}
+\end{frame}
+
+% 9: Peso de la red.
+\begin{frame}[t]{A fondo: mezclar 25 \% de red reduce el MAE}
+\vspace{.12cm}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{.63\textwidth}
+\grafico{compare_05_peso_red}{5.55cm}
+\end{column}
+\begin{column}{.33\textwidth}
+\vspace{.20cm}
+\begin{itemize}\setlength\itemsep{.26cm}
+\item El peso 25\,\% minimiza el MAE en viviendas similares a Chapinero en la prueba \emph{sin vecinos}.
+\item Ese peso se reutiliza en el BLEND con vecinos.
+\item En Kaggle pasa de \MAEVecinos{} a \MAEBlend\,M: mejora de \GainBlend\,M.
+\end{itemize}
+\end{column}
+\end{columns}
+\vfill
+\fuente{La curva corresponde a LGBM por m$^2$ + red sin vecinos (script 11e); el puntaje del BLEND final es el envío del 11f.}
+\end{frame}
+
+% 10: Validacion.
+\begin{frame}[t]{Generalización: la validación aleatoria resulta optimista}
+\vspace{.15cm}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{.63\textwidth}
+\grafico{compare_06_validacion}{5.45cm}
+\end{column}
+\begin{column}{.33\textwidth}
+\vspace{.28cm}
+\begin{itemize}\setlength\itemsep{.25cm}
+\item En el BLEND, la CV aleatoria indica \CVBlendAleatoria\,M; la espacial, \CVBlendEspacial\,M.
+\item Kaggle público registra \MAEBlend\,M.
+\item El salto evidencia el reto de predecir un barrio diferente al de entrenamiento.
+\end{itemize}
+\end{column}
+\end{columns}
+\vfill
+\fuente{Fuente: registro\_modelos.csv y kaggle\_scores.csv. MAE de CV puede ser optimista por selección de hiperparámetros y pesos.}
+\end{frame}
+
+% 11: Eleccion de CV espacial.
+\begin{frame}[t]{Elegimos CV espacial simulando barrios parecidos a Chapinero}
+\vspace{.25cm}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{.64\textwidth}
+\grafico{compare_07_cv_esquemas}{4.35cm}
+\end{column}
+\begin{column}{.32\textwidth}
+\textbf{Criterio de elección}
+\begin{itemize}\setlength\itemsep{.15cm}
+\item Creamos pseudo-Chapineros dentro de train.
+\item Comparamos error prometido por CV y error real al reservar esas zonas.
+\item K-means de 20 regiones obtiene menor brecha media absoluta.
+\end{itemize}
+\end{column}
+\end{columns}
+\nota{\textbf{Implicación:} una buena CV no es la que da el menor MAE, sino la que mejor anticipa una zona nueva. La ventaja frente a bloques de 700 m fue estrecha: \CVGapEspacial\,\% vs. \CVGapBloques\,\%.}
+\fuente{Fuente: seleccion\_cv.csv; evaluación con Random Forest y MCO en pseudo-Chapineros.}
+\end{frame}
+
+% 12: Tradeoffs.
+\begin{frame}[t]{¿Qué modelo elegiríamos y qué sacrificamos?}
+\vspace{.26cm}
+\scriptsize
+\begin{tabularx}{\textwidth}{@{}p{2.25cm}p{1.15cm}X X@{}}
+\cabeceraTabla \textbf{Modelo} & \textbf{MAE público} & \textbf{Ventaja} & \textbf{Costo o límite} \\ \midrule
+\rowcolor{fondoPS}\textbf{BLEND (75/25)} & \textbf{\MAEBlend\,M} & Menor error público & Dos modelos, menor interpretabilidad \\
+LightGBM + vecinos & \MAEVecinos\,M & Alta precisión & Usa precios de inmuebles cercanos \\
+Random Forest & \MAERF\,M & Flexible; un solo modelo & Interpretación compleja \\
+CART & \MAECART\,M & Reglas legibles & Error mucho mayor \\
+MCO completo & \MAELM\,M & Coeficientes simples & Menos flexibilidad \\
+\cierreTabla
+\end{tabularx}
+\vspace{.39cm}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{.48\textwidth}
+\normalsize \textbf{Competencia:} elegiríamos el BLEND por su menor MAE público.
+\end{column}
+\begin{column}{.48\textwidth}
+\normalsize \textbf{Uso inmobiliario:} también importan estabilidad, explicabilidad y sobreestimaciones.
+\end{column}
+\end{columns}
+\vfill
+\fuente{Fuente: Kaggle público. No se atribuyen tiempos computacionales no medidos de forma comparable.}
+\end{frame}
+
+% 13: Mensajes principales.
+\begin{frame}[t]{Tres conclusiones de la comparación}
+\vspace{.43cm}
+\begin{enumerate}\setlength\itemsep{.36cm}
+\item No ganamos solo por escoger un algoritmo: la \textbf{ingeniería de variables}, el cambio de objetivo a precio por m$^2$ y el ensamble explican buena parte de las mejoras observadas.
+\item La evaluación debe representar el problema real: \textbf{predecir Chapinero} es más difícil que validar aleatoriamente propiedades de Bogotá.
+\item El \textbf{BLEND gana en el leaderboard público}: \MAEBlend\,M de MAE. Para decisiones de compra necesitamos contrastar el resultado con validación externa y controlar la sobreestimación.
+\end{enumerate}
+\vspace{.30cm}
+\begin{center}\color{azulPS}\large\bfseries El mejor puntaje es el punto de partida, no el final de la evaluación.\end{center}
+\vfill\fuente{Lectura de resultados versionados del PS3; el leaderboard privado puede diferir del público.}
+\end{frame}
+
+% 14: Despedida.
+\begin{frame}[plain]
+\begin{center}
+\vspace{2.0cm}
+{\fontsize{34}{40}\selectfont\color{azulPS}\bfseries ¡Gracias!}\par\vspace{.43cm}
+{\large Equipo 03: Julián Herrera, Andrés Silva y Valentina Vera}\par\vspace{.15cm}
+{\small MECA 4107 · Algorithm Comparison · 2026-20}
+\end{center}
+\end{frame}
+\end{document}

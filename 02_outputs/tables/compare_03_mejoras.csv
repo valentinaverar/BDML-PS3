@@ -1,0 +1,5 @@
+"Cambio","Antes","Despues","reduccion_MAE"
+"MCO: nuevas variables",296618638.37,215584428.03,81.03421034
+"LGBM: precio por m2",178605249.56,169160077.04,9.44517252000001
+"LGBM m2: vecinos",169160077.04,166725200.45,2.43487659
+"LGBM vecinos: ensamble con red",166725200.45,164527060.57,2.19813988

@@ -86,7 +86,7 @@ source("01_code/11f_model_blend_vecinos_red.R")
 # source("01_code/13_descriptive_analysis.R")
 
 # Etapa 2: comparación de algoritmos (deck compare_equipo_03).
-# source("01_code/14_compare_algorithms.R")
+source("01_code/14_compare_algorithms.R")
 
 # Etapa 3: validación espacial frente a la aleatoria y frente a Kaggle.
 # source("01_code/15_spatial_validation.R")
