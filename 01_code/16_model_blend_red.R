@@ -1,14 +1,14 @@
 ##########################################################
-# 11e_model_blend_red.R
+# 16_model_blend_red.R
 #
-# Objetivo: mezclar el LightGBM híbrido de precio por m² (script 11b) con la
+# Objetivo: mezclar el LightGBM híbrido de precio por m² (script 13) con la
 # red neuronal (script 12) y generar el envío a Kaggle.
 #
 # Etapa del Problem Set: Etapa 2 (combinación de familias) y Etapa 4.
 # Insumos:  03_temp/train_model.rds, test_model.rds (script 05);
 #           03_temp/similitud_chapinero.rds (script 06);
 #           03_temp/oof_lgbm_m2.rds y el envío LGBM_completo_m2_lr_....csv
-#           (script 11b); 03_temp/oof_nn.rds y el envío NN_completo_....csv
+#           (script 13); 03_temp/oof_nn.rds y el envío NN_completo_....csv
 #           (script 12).
 # Salidas:  02_outputs/predictions/BLEND_m2_red_w_....csv (envío).
 #           02_outputs/tables/BLEND_m2_red_pesos.csv: MAE de cada peso.
@@ -29,7 +29,7 @@
 #     CV espacial de los dos scripts (mismos folds) y sus envíos de test.
 #   - Predicción = (1 - w) x LightGBM + w x red. El peso w se elige entre 0
 #     y 1 (pasos de 0,05) con el menor MAE en las viviendas similares a
-#     Chapinero (CV espacial), como en la mezcla del 11c. Como se elige con
+#     Chapinero (CV espacial), como en la mezcla del 14. Como se elige con
 #     el mismo grupo con el que se mide, ese MAE queda un poco optimista;
 #     Kaggle da la medida limpia.
 #   - Evidencia del peso elegido: además del MAE en las similares (el
@@ -64,7 +64,7 @@ oof_red <- readRDS("03_temp/oof_nn.rds")
 for (oof in list(similitud, oof_lgbm, oof_red)) {
   if (!identical(oof$property_id, train$property_id)) {
     stop("Las predicciones fuera de muestra no están en el orden de ",
-         "train_model.rds. Corra de nuevo los scripts 11b y 12.")
+         "train_model.rds. Corra de nuevo los scripts 13 y 12.")
   }
 }
 y <- train$price
@@ -162,7 +162,7 @@ if (w == 0) {
   message("La red no mejora al LightGBM en las similares: no se genera envío.")
 } else {
   nombre <- paste0("BLEND_m2_red_w_", fun_hiperparam_str(w, 2))
-  descripcion <- paste0("Mezcla (1-w) x LightGBM precio m2 (11b) + w x red ",
+  descripcion <- paste0("Mezcla (1-w) x LightGBM precio m2 (13) + w x red ",
                         "neuronal (12); w=", w,
                         " elegido con la CV espacial en las similares")
   oof_blend_red <- data.frame(property_id = train$property_id)

@@ -1,7 +1,7 @@
 ##########################################################
-# 11f_model_blend_vecinos_red.R
+# 17_model_blend_vecinos_red.R
 #
-# Objetivo: mezclar el LightGBM con vecinos (script 11d) con la red
+# Objetivo: mezclar el LightGBM con vecinos (script 15) con la red
 # neuronal (script 12) y generar el envío a Kaggle. Combina las dos mejoras
 # que funcionaron en Chapinero: el precio de los vecinos y la mezcla con la
 # red.
@@ -9,9 +9,9 @@
 # Etapa del Problem Set: Etapa 2 (combinación de familias) y Etapa 4.
 # Insumos:  03_temp/train_model.rds, test_model.rds (script 05);
 #           03_temp/oof_lgbm_vecinos.rds y el envío
-#           LGBM_completo_m2_vecinos_k..._lr_....csv (script 11d);
+#           LGBM_completo_m2_vecinos_k..._lr_....csv (script 15);
 #           03_temp/oof_nn.rds y el envío NN_completo_....csv (script 12);
-#           02_outputs/tables/BLEND_m2_red_pesos.csv (script 11e).
+#           02_outputs/tables/BLEND_m2_red_pesos.csv (script 16).
 # Salidas:  02_outputs/predictions/BLEND_vecinos_red_w_....csv (envío).
 #           Filas en 02_outputs/tables/registro_modelos.csv.
 #           03_temp/oof_blend_vecinos_red.rds (predicciones fuera de muestra).
@@ -21,11 +21,11 @@
 #     corrige la subestimación de los árboles. Son problemas distintos, así
 #     que las dos mejoras pueden sumarse.
 #   - Predicción = (1 - w) x LightGBM con vecinos + w x red, con el MISMO
-#     peso w que eligió el script 11e para la mezcla sin vecinos (se lee de
+#     peso w que eligió el script 16 para la mezcla sin vecinos (se lee de
 #     su tabla de pesos). No se vuelve a elegir con la CV espacial porque
 #     esa CV subestima lo que aportan los vecinos: al apartar una región
 #     entera quedan a unos 660 m, frente a unos 220 m en Chapinero. En la
-#     CV el 11d sale peor que el 11b, pero en Kaggle sale mejor (166,7
+#     CV el 15 sale peor que el 13, pero en Kaggle sale mejor (166,7
 #     frente a 169,2).
 #   - No se reentrena nada: se usan las predicciones fuera de muestra y los
 #     envíos de test de los dos scripts.
@@ -51,11 +51,11 @@ oof_red <- readRDS("03_temp/oof_nn.rds")
 for (oof in list(oof_vecinos, oof_red)) {
   if (!identical(oof$property_id, train$property_id)) {
     stop("Las predicciones fuera de muestra no están en el orden de ",
-         "train_model.rds. Corra de nuevo los scripts 11d y 12.")
+         "train_model.rds. Corra de nuevo los scripts 15 y 12.")
   }
 }
 if (!file.exists("02_outputs/tables/BLEND_m2_red_pesos.csv")) {
-  stop("Falta la tabla de pesos de la mezcla. Corra primero el script 11e.")
+  stop("Falta la tabla de pesos de la mezcla. Corra primero el script 16.")
 }
 y <- train$price
 rango_precio <- range(y)
@@ -82,17 +82,17 @@ fun_mezclar <- function(.lgbm, .red, .w) {
   pmin(pmax((1 - .w) * .lgbm + .w * .red, rango_precio[1]), rango_precio[2])
 }
 
-# Peso: el que eligió el 11e para la mezcla sin vecinos -------------------
+# Peso: el que eligió el 16 para la mezcla sin vecinos -------------------
 pesos_11e <- utils::read.csv("02_outputs/tables/BLEND_m2_red_pesos.csv")
 w <- pesos_11e$peso_red[which.min(pesos_11e$mae_similares)]
-message("Peso de la red (elegido en el 11e): ", w, ".")
-if (w == 0) stop("En el 11e la red no aportaba (peso 0). No se mezcla.")
+message("Peso de la red (elegido en el 16): ", w, ".")
+if (w == 0) stop("En el 16 la red no aportaba (peso 0). No se mezcla.")
 
 # Registro, predicciones fuera de muestra y envío -------------------------
 nombre <- paste0("BLEND_vecinos_red_w_", fun_hiperparam_str(w, 2))
-descripcion <- paste0("Mezcla (1-w) x LightGBM precio m2 con vecinos (11d) ",
+descripcion <- paste0("Mezcla (1-w) x LightGBM precio m2 con vecinos (15) ",
                       "+ w x red neuronal (12); w=", w,
-                      " (el mismo elegido en el 11e)")
+                      " (el mismo elegido en el 16)")
 oof_blend <- data.frame(property_id = train$property_id)
 for (tipo in c("espacial", "aleatoria")) {
   pred <- fun_mezclar(oof_vecinos[[paste0("LGBM_vecinos_", tipo)]],

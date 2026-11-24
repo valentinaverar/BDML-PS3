@@ -1,5 +1,5 @@
 ##########################################################
-# 14_compare_algorithms.R
+# 18_compare_algorithms.R
 #
 # Objetivo: producir las figuras y cifras del deck de comparación de
 # algoritmos (compare_equipo_03): ranking de las seis familias con la
@@ -12,7 +12,7 @@
 # Versión inicial del deck y del script: Andrés Silva.
 # Insumos:  02_outputs/tables/registro_modelos.csv (scripts 07 a 12),
 #           LGBM_completo_ensayos.csv (script 11), BLEND_m2_red_pesos.csv
-#           (script 11e) y *_busqueda.csv (scripts 08 a 12);
+#           (script 16) y *_busqueda.csv (scripts 08 a 12);
 #           00_data/kaggle_scores.csv.
 # Salidas:  02_outputs/figures/compare_*.pdf y
 #           02_outputs/tables/compare_datos.tex (cifras del deck como
@@ -31,7 +31,7 @@
 #   - Las mejoras posteriores del mejor modelo (vecinos, 177 variables, y
 #     la mezcla con la red) se agregaron después de elegir el algoritmo;
 #     se muestran en el deck best_equipo_03.
-#   - Mismo estilo de figuras que los scripts 16 y 17.
+#   - Mismo estilo de figuras que los scripts 19 y 20.
 ##########################################################
 
 # Objetos que ya existían en el entorno antes de correr este script. Al
@@ -42,7 +42,7 @@ objetos_previos <- ls()
 if (!require(pacman)) install.packages("pacman")
 pacman::p_load(dplyr, tidyr, ggplot2, patchwork, forcats)
 
-# Estilo de las figuras (el mismo de los scripts 16 y 17) --------------------
+# Estilo de las figuras (el mismo de los scripts 19 y 20) --------------------
 color_1 <- "#2a78d6"        # Azul.
 color_2 <- "#0f3570"        # Azul oscuro.
 color_3 <- "#7fb0ec"        # Azul claro.
@@ -296,7 +296,7 @@ grafico_sesgo <- familias |>
 fun_guardar(grafico_sesgo, "compare_sesgo", 7.5, 4.6)
 
 # 5b. Cuánto de la red mezclar con LightGBM -----------------------------------
-# Peso de la red elegido en el script 11e: el que minimiza el MAE en las
+# Peso de la red elegido en el script 16: el que minimiza el MAE en las
 # parecidas a Chapinero. También se muestra el MAE en toda la CV.
 peso_elegido <- pesos_red$peso_red[which.min(pesos_red$mae_similares)]
 curva_pesos <- pesos_red |>
@@ -320,7 +320,7 @@ grafico_pesos <- curva_pesos |>
                       "% de red neuronal reduce el error"),
        subtitle = "MAE de la mezcla LightGBM por m² + red neuronal (millones de pesos)",
        x = "Peso de la red neuronal en la mezcla", y = "MAE (millones)",
-       caption = "Predicciones fuera de muestra con la CV espacial (script 11e).") +
+       caption = "Predicciones fuera de muestra con la CV espacial (script 16).") +
   tema
 fun_guardar(grafico_pesos, "compare_peso_red", 7.5, 4.6)
 

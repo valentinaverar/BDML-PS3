@@ -1,5 +1,5 @@
 ##########################################################
-# 16_best_model_analysis.R
+# 19_best_model_analysis.R
 #
 # Objetivo: producir las figuras, tablas y cifras del deck del mejor modelo
 # (best_equipo_03): en qué se diferencia Chapinero, cómo se construyeron
@@ -11,12 +11,12 @@
 # (validación espacial) y Etapa 4 (el mejor modelo).
 # Insumos:  03_temp/train_features.rds, test_features.rds, train_model.rds,
 #           similitud_chapinero.rds, cv_folds.rds,
-#           oof_blend_vecinos_red.rds (scripts 05, 06 y 11f);
+#           oof_blend_vecinos_red.rds (scripts 05, 06 y 17);
 #           02_outputs/tables/registro_modelos.csv,
 #           zonas_similitud_chapinero.csv, seleccion_cv.csv (script 06),
-#           LGBM_vecinos_importancia.csv (script 11d), LGBM_completo_ensayos.csv
-#           (script 11), BLEND_m2_red_pesos.csv (script 11e);
-#           03_temp/test_model.rds y los envíos del 11d, el 12 y el 11f en
+#           LGBM_vecinos_importancia.csv (script 15), LGBM_completo_ensayos.csv
+#           (script 11), BLEND_m2_red_pesos.csv (script 16);
+#           03_temp/test_model.rds y los envíos del 15, el 12 y el 17 en
 #           02_outputs/predictions/ (ejemplo de una vivienda de Chapinero);
 #           00_data/kaggle_scores.csv;
 #           00_data/external/geo_cache/estratificacion_manzanas.rds (fondo
@@ -125,7 +125,7 @@ pesos_red <- read.csv("02_outputs/tables/BLEND_m2_red_pesos.csv")
 for (.x in list(train_model, similitud, oof)) {
   if (!identical(.x$property_id, train$property_id)) {
     stop("Los insumos no están en el mismo orden de filas que train. ",
-         "Corra de nuevo los scripts 05, 06, 11d y 11f.")
+         "Corra de nuevo los scripts 05, 06, 15 y 17.")
   }
 }
 
@@ -368,7 +368,7 @@ fun_guardar(grafico_cascada, "best_cascada_kaggle", 7.5, 4.6)
 
 # 4. Importancia de las variables --------------------------------------------------
 # Ganancia (reducción del error) que aporta cada variable en los árboles de
-# los dos modelos finales del híbrido (script 11d). No son efectos causales.
+# los dos modelos finales del híbrido (script 15). No son efectos causales.
 etiquetas <- c(
   vec_precio_m2 = "Precio por m² de los vecinos",
   vec_precio = "Precio de los vecinos",
@@ -581,7 +581,7 @@ fun_guardar(grafico_deciles, "best_sesgo_deciles", 7.5, 4.6)
 # 8. Ejemplo: cómo valora el modelo una vivienda de Chapinero -----------------
 # Un apartamento típico de test con superficie real (70 a 90 m²): el de
 # predicción final más cercana a la mediana de ese grupo. Se muestran las
-# piezas del modelo con los envíos guardados (11d, 12 y 11f).
+# piezas del modelo con los envíos guardados (15, 12 y 17).
 fun_leer_envio <- function(.archivo) {
   #' Leer un envío de Kaggle en el orden de test_features.rds
   envio <- read.csv(paste0("02_outputs/predictions/", .archivo, ".csv"))
@@ -595,7 +595,7 @@ test_model <- readRDS("03_temp/test_model.rds")
 if (!identical(test_model$property_id, test$property_id)) {
   stop("test_model.rds y test_features.rds no tienen el mismo orden de filas.")
 }
-# Superficie real (no imputada), con la misma regla del 11b y el 11d.
+# Superficie real (no imputada), con la misma regla del 13 y el 15.
 fun_superficie_real <- function(.datos) {
   dplyr::case_when(
     .datos$falta_surface_covered_completa == 0 ~ .datos$surface_covered_completa,
@@ -612,7 +612,7 @@ candidatas <- which(superficie_real_test & test$property_type == "Apartamento" &
 ej <- candidatas[which.min(abs(pred_final_test[candidatas] -
                                  stats::median(pred_final_test[candidatas])))]
 grupo_anuncio <- fun_grupo_anuncio(train)
-# Vecinos del ejemplo, como en el 11d: precio por m² de las 10 viviendas de
+# Vecinos del ejemplo, como en el 15: precio por m² de las 10 viviendas de
 # train más cercanas con superficie real.
 filas_m2 <- which(!is.na(superficie_train))
 vecinos_ej <- fun_vecinos(xy_train[filas_m2, ], (y / superficie_train)[filas_m2],
@@ -671,7 +671,7 @@ cifras <- c(
   KaggleAmpliado = fun_coma(kaggle$puntaje_publico[
     kaggle$archivo == "LGBM_ampliado_lr_0_017_hojas_66_prof_7_minhoja_23_rondas_4994"] / 1e6, 1),
   MejoraLMTexto = fun_coma(pasos$mae[1] - pasos$mae[2], 0),
-  # Qué dijo cada CV sobre agregar los vecinos (11b frente a 11d) y qué
+  # Qué dijo cada CV sobre agregar los vecinos (13 frente a 15) y qué
   # dijo Kaggle.
   CVEspSinVec = fun_coma(fun_mae_registro(pasos$archivo[4], "espacial"), 1),
   CVEspConVec = fun_coma(fun_mae_registro(pasos$archivo[5], "espacial"), 1),

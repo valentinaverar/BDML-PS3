@@ -29,7 +29,7 @@
 #   - La búsqueda usa 300 árboles, para que las 30 combinaciones (6 x 5
 #     folds) terminen en un tiempo razonable. El modelo que se registra y
 #     se envía usa 500 árboles, con el mtry y el min.node.size ya elegidos.
-#   - Segunda variante, como en el script 11b: donde la superficie es real
+#   - Segunda variante, como en el script 13: donde la superficie es real
 #     se predice el precio por m² y se multiplica por esa superficie; donde
 #     fue imputada se usa el bosque de precio total. Mismos hiperparámetros.
 #   - El modelo final guarda la importancia por impureza
@@ -90,7 +90,7 @@ message("Random Forest: conjunto completo, ", ncol(x_train), " predictores.")
 fun_superficie <- function(.datos) {
   #' Superficie real de cada vivienda, o NA si fue imputada
   #'
-  #' @description La misma regla del script 11b.
+  #' @description La misma regla del script 13.
   fun_conocida <- function(.v) {
     indicador <- paste0("falta_", .v)
     if (indicador %in% names(.datos)) .datos[[indicador]] == 0 else

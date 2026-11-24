@@ -28,7 +28,7 @@
 #     interna de rpart.
 #   - Los hiperparámetros se eligen minimizando el MAE en pesos. Con los
 #     elegidos se miden las dos CV y se registran con fun_registrar_cv().
-#   - Segunda variante, como en el script 11b: donde la superficie es real
+#   - Segunda variante, como en el script 13: donde la superficie es real
 #     se predice el precio por m² y se multiplica por esa superficie; donde
 #     fue imputada se usa el árbol de precio total. Usa el mismo cp y el
 #     mismo minbucket. Los árboles no extrapolan, y esta variante es la que
@@ -87,7 +87,7 @@ message("CART: conjunto completo, ", ncol(x_train), " predictores.")
 fun_superficie <- function(.datos) {
   #' Superficie real de cada vivienda, o NA si fue imputada
   #'
-  #' @description La misma regla del script 11b: cubierta o, si falta, total,
+  #' @description La misma regla del script 13: cubierta o, si falta, total,
   #' incluidas las tomadas de la descripción. NA si las dos fueron imputadas.
   fun_conocida <- function(.v) {
     indicador <- paste0("falta_", .v)

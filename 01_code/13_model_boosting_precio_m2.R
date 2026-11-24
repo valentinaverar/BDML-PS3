@@ -1,5 +1,5 @@
 ##########################################################
-# 11b_model_boosting_precio_m2.R
+# 13_model_boosting_precio_m2.R
 #
 # Objetivo: LightGBM que aprende el precio por metro cuadrado (y luego lo
 # multiplica por la superficie) en lugar del precio total, para predecir

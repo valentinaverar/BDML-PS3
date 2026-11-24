@@ -1,5 +1,5 @@
 ##########################################################
-# 11c_model_blend_extrapolacion.R
+# 14_model_blend_elastic_net.R
 #
 # Objetivo: mejorar el LightGBM en Chapinero. El árbol se queda corto
 # cuando la vivienda está más cerca del empleo de lo que vio en train,
@@ -26,7 +26,7 @@
 #   - Los hiperparámetros del LightGBM no se vuelven a buscar: se usa el
 #     ensayo que ya está en Kaggle (lr 0,017, 66 hojas, profundidad 7,
 #     mínimo 23, 4.123 rondas). Las rondas del precio por m² sí se eligen
-#     con la CV espacial, como en el script 11b.
+#     con la CV espacial, como en el script 13.
 #   - Elastic Net: alpha en {0; 0,5; 1} y el lambda de glmnet. Se elige
 #     con la CV espacial, minimizando el MAE en pesos. Hay uno para el
 #     precio total y otro para el precio por m².
@@ -129,7 +129,7 @@ fun_acotar <- function(.pred) {
 # LightGBM: el ensayo que ya está en Kaggle --------------------------------
 ensayos <- read.csv("02_outputs/tables/LGBM_completo_ensayos.csv")
 
-# Mejor ensayo del script 11 (el mismo que usan el 11 y el 11b).
+# Mejor ensayo del script 11 (el mismo que usan el 11 y el 13).
 ganador <- ensayos[which.min(ensayos$mae), ]
 
 fun_armar_params <- function(.fila) {

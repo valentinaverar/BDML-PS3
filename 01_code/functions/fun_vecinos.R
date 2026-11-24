@@ -3,7 +3,7 @@
 #
 # Función para construir el rezago espacial del precio: el valor típico de
 # las viviendas vecinas de train (Lecture 14, datos espaciales). La usa
-# 11d_model_boosting_vecinos.R.
+# 15_model_boosting_vecinos.R.
 #
 # Cuidado con la fuga de información: el precio de los vecinos solo puede
 # salir de viviendas cuyo precio el modelo tiene permitido ver. Por eso la

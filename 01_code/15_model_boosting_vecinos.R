@@ -1,7 +1,7 @@
 ##########################################################
-# 11d_model_boosting_vecinos.R
+# 15_model_boosting_vecinos.R
 #
-# Objetivo: agregar al LightGBM híbrido del script 11b el precio de las
+# Objetivo: agregar al LightGBM híbrido del script 13 el precio de las
 # viviendas vecinas de train (rezago espacial del precio) y generar su
 # envío a Kaggle.
 #
@@ -16,7 +16,7 @@
 #           03_temp/oof_lgbm_vecinos.rds (predicciones fuera de muestra).
 #           03_temp/LGBM_vecinos_<precio|m2>_modelo.txt (modelos finales).
 #           02_outputs/tables/LGBM_vecinos_importancia.csv (importancia por
-#           ganancia de los dos modelos finales, para el script 16).
+#           ganancia de los dos modelos finales, para el script 19).
 #
 # Decisiones:
 #   - Problema que se ataca: el modelo se queda corto en Chapinero porque
@@ -44,9 +44,9 @@
 #     Chapinero los vecinos están a unos 90 m. Por eso la CV espacial
 #     subestima lo que aportan estas variables. El script imprime la
 #     distancia típica a los vecinos en cada caso.
-#   - Todo lo demás es igual al 11b: modelo híbrido (precio por m² x
+#   - Todo lo demás es igual al 13: modelo híbrido (precio por m² x
 #     superficie donde la superficie es real; precio total donde no),
-#     hiperparámetros del mejor ensayo del 11 y rondas del 11b.
+#     hiperparámetros del mejor ensayo del 11 y rondas del 13.
 ##########################################################
 
 # Objetos que ya existían en el entorno antes de correr este script. Al
@@ -96,7 +96,7 @@ fun_matriz <- function(.datos, .vars) {
 x_train <- fun_matriz(train, conjuntos_predictores$completo)
 x_test <- fun_matriz(test, conjuntos_predictores$completo)
 
-# Superficie conocida (no imputada), igual que en el 11b.
+# Superficie conocida (no imputada), igual que en el 13.
 fun_superficie <- function(.datos) {
   #' Superficie real de cada vivienda, o NA si fue imputada
   fun_conocida <- function(.v) {
@@ -170,7 +170,7 @@ params <- do.call(fun_armar_params, as.list(
           "feature_fraction", "bagging_fraction", "log_l1", "log_l2")]))
 rondas_precio <- as.integer(mejor$rondas)
 
-# Rondas del modelo de precio por m²: igual que en el 11b (CV espacial con
+# Rondas del modelo de precio por m²: igual que en el 13 (CV espacial con
 # el conjunto completo, solo superficie conocida).
 folds_m2 <- lapply(cv_folds$espacial,
                    function(.val) match(intersect(.val, filas_m2), filas_m2))
@@ -190,7 +190,7 @@ fun_acotar <- function(.pred) pmin(pmax(.pred, rango_precio[1]), rango_precio[2]
 
 fun_predecir <- function(.filas_ajuste, .x_ajuste, .x_nuevo,
                          .superficie_nueva) {
-  #' Modelo híbrido (como en el 11b) con las variables de vecinos
+  #' Modelo híbrido (como en el 13) con las variables de vecinos
   #'
   #' @param .filas_ajuste \code{integer}. Filas de train para entrenar.
   #' @param .x_ajuste Matriz de predictores de esas filas (con vecinos).
@@ -224,7 +224,7 @@ fun_predecir <- function(.filas_ajuste, .x_ajuste, .x_nuevo,
 nombre <- paste0("LGBM_completo_m2_vecinos_k", k_vecinos, "_lr_",
                  fun_hiperparam_str(params$learning_rate, 3),
                  "_hojas_", params$num_leaves, "_rondas_", rondas_m2)
-descripcion <- paste0("Híbrido del 11b + rezago espacial del precio (", k_vecinos,
+descripcion <- paste0("Híbrido del 13 + rezago espacial del precio (", k_vecinos,
                       " vecinos de entrenamiento: precio por m², distancia y ",
                       "precio total); hiperparámetros del 11; rondas m2=",
                       rondas_m2, "; rondas precio=", rondas_precio)
@@ -269,7 +269,7 @@ pred_test <- fun_predecir(todas, cbind(x_train, vec_train),
 fun_save_submission(.ids = test$property_id, .pred = as.numeric(pred_test),
                     .nombre = nombre)
 
-# Modelos finales e importancia (insumo del script 16). Se guardan los dos
+# Modelos finales e importancia (insumo del script 19). Se guardan los dos
 # modelos del híbrido: el de precio por m² predice el 56% de Chapinero
 # (superficie real) y el de precio total el resto.
 modelos_finales <- attr(pred_test, "modelos")

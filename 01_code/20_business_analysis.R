@@ -1,5 +1,5 @@
 ##########################################################
-# 17_business_analysis.R
+# 20_business_analysis.R
 #
 # Objetivo: traducir los errores del mejor modelo a decisiones de compra en
 # Chapinero: qué pasa si la empresa ofrece exactamente lo que predice el
@@ -8,7 +8,7 @@
 #
 # Etapa del Problem Set: Etapa 4 (del mejor modelo a decisiones de negocio).
 # Insumos:  03_temp/train_model.rds, similitud_chapinero.rds,
-#           oof_blend_vecinos_red.rds (scripts 05, 06 y 11f);
+#           oof_blend_vecinos_red.rds (scripts 05, 06 y 17);
 #           02_outputs/tables/registro_modelos.csv; 00_data/kaggle_scores.csv.
 # Salidas:  02_outputs/figures/negocio_*.pdf y
 #           02_outputs/tables/negocio_datos.tex (cifras del deck como
@@ -51,7 +51,7 @@ pacman::p_load(dplyr, tidyr, ggplot2, forcats)
 riesgo_aceptable <- 0.10         # Máximo de compras pagadas de más.
 margenes <- seq(0, 0.45, 0.01)   # Descuentos sobre la predicción.
 
-# Estilo de las figuras (el mismo del script 16) ------------------------------
+# Estilo de las figuras (el mismo del script 19) ------------------------------
 color_1 <- "#2a78d6"
 color_2 <- "#0f3570"        # Azul oscuro.
 color_3 <- "#9cc3ee"        # Azul claro.
@@ -110,7 +110,7 @@ kaggle <- read.csv("00_data/kaggle_scores.csv")
 for (.x in list(similitud, oof)) {
   if (!identical(.x$property_id, train$property_id)) {
     stop("Los insumos no están en el mismo orden de filas que train. ",
-         "Corra de nuevo los scripts 05, 06 y 11f.")
+         "Corra de nuevo los scripts 05, 06 y 17.")
   }
 }
 mejor <- kaggle[which.min(kaggle$puntaje_publico), ]

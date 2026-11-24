@@ -60,7 +60,7 @@ source("01_code/05_build_model_data.R")
 # espacial) compartidas por todos los modelos.
 source("01_code/06_create_cv_folds.R")
 
-# Bloque B: modelos (Etapa 2; cada script genera sus envíos a Kaggle) -----
+# Bloque B: las seis familias (Etapa 2; cada script genera sus envíos) ----
 # Cada script puede correrse solo, una vez corridos los scripts 01 a 06.
 
 source("01_code/07_model_linear_regression.R")
@@ -68,32 +68,30 @@ source("01_code/08_model_elastic_net.R")
 source("01_code/09_model_cart.R")
 source("01_code/10_model_random_forest.R")
 source("01_code/11_model_boosting.R")
-# LightGBM que predice el precio por m² (donde la superficie es real).
-source("01_code/11b_model_boosting_precio_m2.R")
-# Mezcla LightGBM + Elastic Net para extrapolar el precio en Chapinero.
-source("01_code/11c_model_blend_extrapolacion.R")
-# LightGBM de precio por m² con el precio de las viviendas vecinas.
-source("01_code/11d_model_boosting_vecinos.R")
 source("01_code/12_model_neural_network.R")
-# Mezcla del LightGBM de precio por m² (11b) con la red neuronal (12).
-source("01_code/11e_model_blend_red.R")
-# Mezcla del LightGBM con vecinos (11d) con la red neuronal (12).
-source("01_code/11f_model_blend_vecinos_red.R")
 
-# Bloque C: análisis para las presentaciones -------------------------------
+# Bloque C: mejoras sobre el algoritmo ganador (LightGBM) -------------------
 
-# Etapa 1: distribución de precios, faltantes y diferencias de Chapinero.
-# source("01_code/13_descriptive_analysis.R")
+# LightGBM que predice el precio por m² (donde la superficie es real).
+source("01_code/13_model_boosting_precio_m2.R")
+# Mezcla LightGBM + Elastic Net para extrapolar el precio en Chapinero.
+source("01_code/14_model_blend_elastic_net.R")
+# LightGBM de precio por m² con el precio de las viviendas vecinas.
+source("01_code/15_model_boosting_vecinos.R")
+# Mezcla del LightGBM de precio por m² (13) con la red neuronal (12); elige
+# el peso de la red.
+source("01_code/16_model_blend_red.R")
+# Mejor modelo: LightGBM con vecinos (15) mezclado con la red (12).
+source("01_code/17_model_blend_vecinos_red.R")
 
-# Etapa 2: comparación de algoritmos (deck compare_equipo_03).
-source("01_code/14_compare_algorithms.R")
+# Bloque D: análisis para las presentaciones -------------------------------
 
-# Etapa 3: validación espacial frente a la aleatoria y frente a Kaggle.
-# source("01_code/15_spatial_validation.R")
+# Comparación de algoritmos (deck compare_equipo_03).
+source("01_code/18_compare_algorithms.R")
 
-# Etapa 4: mejor modelo, errores y decisión de compra (deck best_equipo_03).
-source("01_code/16_best_model_analysis.R")
-source("01_code/17_business_analysis.R")
+# Mejor modelo, errores y decisión de compra (deck best_equipo_03).
+source("01_code/19_best_model_analysis.R")
+source("01_code/20_business_analysis.R")
 
-# Bloque D: diapositivas ---------------------------------------------------
+# Bloque E: diapositivas ---------------------------------------------------
 source("04_slides/compile_slides.R")
