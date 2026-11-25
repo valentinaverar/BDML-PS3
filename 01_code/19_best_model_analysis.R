@@ -2,7 +2,8 @@
 # 19_best_model_analysis.R
 #
 # Objetivo: producir las figuras, tablas y cifras del deck del mejor modelo
-# (best_equipo_03): en qué se diferencia Chapinero, cómo se construyeron
+# (best_equipo_03): en qué se diferencia Chapinero (incluido un mapa del
+# precio por m² en Bogotá), cómo se construyeron
 # los pseudo-Chapineros para elegir la CV espacial, la cascada de envíos a
 # Kaggle, la importancia de las variables, lo que promete la CV frente a
 # Kaggle y el sesgo del modelo por rango de precio.
@@ -272,6 +273,73 @@ grafico_mapa <- ggplot() +
   tema +
   theme(panel.grid = element_blank(), axis.text = element_blank())
 fun_guardar(grafico_mapa, "best_pseudo_chapinero_mapa", 5.4, 6.2)
+
+# 2b. Mapa del precio por m² ------------------------------------------------
+# Descriptivo: precio mediano por m² de los anuncios de train en hexágonos
+# de 600 m. Solo anuncios con superficie observada en la base (cubierta o,
+# si falta, total) entre 20 y 500 m², y hexágonos con al menos 5 anuncios.
+# El contorno marca los hexágonos con al menos 5 anuncios de Chapinero
+# (test), que no tienen precio. No se estima un efecto causal.
+lado_hexagono <- 600
+min_anuncios_hexagono <- 5
+puntos_m2 <- tibble(x = xy_train[, 1], y = xy_train[, 2],
+                    area = dplyr::coalesce(train$surface_covered,
+                                           train$surface_total),
+                    precio_m2 = train$price / area / 1e6) |>
+  filter(between(area, 20, 500)) |>
+  sf::st_as_sf(coords = c("x", "y"), crs = crs_m)
+hexagonos <- sf::st_make_grid(sf::st_as_sfc(sf::st_bbox(puntos_m2)),
+                              cellsize = lado_hexagono, square = FALSE) |>
+  sf::st_sf() |>
+  mutate(id = row_number())
+precio_hexagono <- sf::st_join(puntos_m2, hexagonos) |>
+  sf::st_drop_geometry() |>
+  group_by(id) |>
+  summarise(precio_m2 = stats::median(precio_m2), n = n(), .groups = "drop") |>
+  filter(n >= min_anuncios_hexagono)
+hexagonos_precio <- inner_join(hexagonos, precio_hexagono, by = "id")
+anuncios_test_hexagono <- sf::st_join(
+  sf::st_as_sf(tibble(x = xy_test[, 1], y = xy_test[, 2]),
+               coords = c("x", "y"), crs = crs_m), hexagonos) |>
+  sf::st_drop_geometry() |>
+  count(id)
+contorno_chapinero <- hexagonos |>
+  filter(id %in% anuncios_test_hexagono$id[
+    anuncios_test_hexagono$n >= min_anuncios_hexagono]) |>
+  sf::st_union()
+# Anuncios de train dentro del contorno de Chapinero (cifra del deck).
+en_zona_chapinero <- lengths(sf::st_intersects(puntos_m2, contorno_chapinero)) > 0
+tope_m2 <- 9
+caja_m2 <- sf::st_bbox(hexagonos_precio)
+
+grafico_mapa_m2 <- ggplot() +
+  geom_sf(data = sf::st_crop(manzanas_bogota, caja_m2), fill = "#e9e8e4",
+          color = NA) +
+  geom_sf(data = hexagonos_precio, aes(fill = pmin(precio_m2, tope_m2)),
+          color = "white", linewidth = 0.1) +
+  geom_sf(data = contorno_chapinero, fill = NA, color = texto_1,
+          linewidth = 0.9) +
+  scale_fill_gradientn(colours = c("#c9f0e6", "#5cc6b4", "#2a78d6",
+                                   "#3b3fa0", "#5b2a86"),
+                       limits = c(NA, tope_m2), breaks = c(3, 5, 7, 9),
+                       labels = c("3", "5", "7", "9 o más"),
+                       name = "Millones\npor m²") +
+  coord_sf(datum = NA, expand = FALSE,
+           xlim = c(caja_m2["xmin"], caja_m2["xmax"]),
+           ylim = c(caja_m2["ymin"], caja_m2["ymax"])) +
+  labs(title = "Chapinero está entre las zonas más caras de Bogotá",
+       subtitle = paste0("Precio mediano por m² de los anuncios de train, en ",
+                         "hexágonos de ", lado_hexagono, " m"),
+       x = NULL, y = NULL,
+       caption = paste0("Contorno negro: hexágonos con anuncios de Chapinero ",
+                        "(test, sin precio).\nHexágonos con al menos ",
+                        min_anuncios_hexagono, " anuncios con superficie ",
+                        "entre 20 y 500 m².")) +
+  tema +
+  theme(panel.grid = element_blank(), axis.text = element_blank(),
+        legend.position = "right",
+        legend.title = element_text(color = texto_2, size = 9))
+fun_guardar(grafico_mapa_m2, "best_mapa_precio_m2", 5.4, 6.2)
 
 # Las tres validaciones cruzadas que guardó el script 06, en el mapa. Cada
 # color es un fold. Debajo de cada mapa: cuánto se alejó el error que
@@ -678,6 +746,11 @@ cifras <- c(
   ErrorPct = fun_pct(mejor$puntaje_publico / precio_medio_similares),
   PrecioMedioSimilares = fun_entero(precio_medio_similares / 1e6),
   PrecioMedioResto = fun_entero(mean(y[!similares]) / 1e6),
+  # Mapa del precio por m² (sección 2b).
+  MdosBogota = fun_coma(stats::median(puntos_m2$precio_m2), 1),
+  MdosZonaChapinero = fun_coma(stats::median(puntos_m2$precio_m2[en_zona_chapinero]), 1),
+  NZonaChapinero = fun_entero(sum(en_zona_chapinero)),
+  LadoHexagono = lado_hexagono,
   PctAptoTrain = fun_pct(mean(train$property_type == "Apartamento")),
   PctAptoTest = fun_pct(mean(test$property_type == "Apartamento")),
   # Anuncios sin ninguna de las dos superficies en las columnas originales.

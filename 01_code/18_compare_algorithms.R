@@ -388,14 +388,18 @@ importancia_arboles <- bind_rows(
   fun_importancia("02_outputs/tables/LGBM_completo_importancia.csv", "LightGBM",
                   "Feature", "Gain")
 )
+# Mismos nombres que la figura de importancia del mejor modelo (script 19),
+# para que las dos slides se puedan leer juntas.
 nombres_var <- c(
   bathrooms_completa = "Baños", surface_covered_completa = "Superficie cubierta",
-  surface_total_completa = "Superficie total", dist_centro_empleo_m = "Distancia al empleo",
-  lon = "Longitud", lat = "Latitud", bedrooms = "Habitaciones", rooms = "Ambientes",
-  estrato_manzana = "Estrato", txt_parqueaderos = "Parqueaderos (texto)",
-  pct_zona_verde_500m = "Zona verde a 500 m", property_type = "Casa o apartamento",
+  surface_total_completa = "Superficie total",
+  dist_centro_empleo_m = "Distancia al centro de empleo",
+  lon = "Longitud (oriente-occidente)", lat = "Latitud (norte-sur)",
+  bedrooms = "Habitaciones", rooms = "Ambientes",
+  estrato_manzana = "Estrato de la manzana", txt_parqueaderos = "Parqueaderos (texto)",
+  pct_zona_verde_500m = "Zona verde a 500 m (%)", property_type = "Casa o apartamento",
   dist_transmilenio_m = "Distancia a TransMilenio", dist_via_principal_m = "Distancia a vía principal",
-  pendiente_terreno_pct = "Pendiente", dist_centro_comercial_m = "Distancia a centro comercial",
+  pendiente_terreno_pct = "Pendiente del terreno", dist_centro_comercial_m = "Distancia a centro comercial",
   dist_universidad_m = "Distancia a universidad", raiz_cas = "Palabra: casa")
 top_arboles <- importancia_arboles |>
   group_by(variable) |>
@@ -414,9 +418,11 @@ grafico_arboles <- datos_arboles |>
   ggplot(aes(x = modelo, y = nombre, fill = pct)) +
   geom_tile(color = "white", linewidth = 1) +
   geom_text(aes(label = paste0(fun_coma(pct, 1), "%"),
-                color = pct > stats::median(datos_arboles$pct) * 1.6),
+                color = pct > 7.5),
             size = 3.6) +
-  scale_fill_gradient(low = "#e3edf9", high = color_2, guide = "none") +
+  # Mismos colores del mapa de precio por m² (script 19).
+  scale_fill_gradientn(colours = c("#c9f0e6", "#5cc6b4", "#2a78d6", "#3b3fa0",
+                                   "#5b2a86"), guide = "none") +
   scale_color_manual(values = c("TRUE" = "white", "FALSE" = texto_1), guide = "none") +
   scale_x_discrete(position = "top") +
   labs(title = "Los tres modelos de árboles coinciden en lo importante",

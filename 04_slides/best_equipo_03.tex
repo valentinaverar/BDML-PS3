@@ -149,6 +149,27 @@
 % ============================================================
 
 \begin{frame}{Chapinero no es la Bogot\'a promedio}
+  \vspace{6mm}
+  \begin{columns}[c, onlytextwidth]
+    \begin{column}{0.5\textwidth}
+      \centering
+      \includegraphics[width=\linewidth, height=0.8\textheight, keepaspectratio]{best_mapa_precio_m2}
+    \end{column}
+    \begin{column}{0.47\textwidth}
+      \small
+      \begin{itemize}\setlength{\itemsep}{4pt}
+        \item Cada hex\'agono resume los anuncios de train en \LadoHexagono{} m: su precio mediano por m\textsuperscript{2}.
+        \item El m\textsuperscript{2} es m\'as caro en el nororiente de la ciudad, y Chapinero (contorno negro) est\'a en ese corredor.
+        \item Los \NZonaChapinero{} anuncios de train que caen en la zona de Chapinero valen \MdosZonaChapinero{} millones por m\textsuperscript{2}, frente a \MdosBogota{} de la mediana de Bogot\'a.
+        \item Por eso el modelo necesita saber cu\'anto vale la zona: usamos el precio de los vecinos y validamos por regiones.
+      \end{itemize}
+      \vspace{1mm}
+      {\scriptsize\color{black!60}Descriptivo, no causal.\par}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Chapinero no es la Bogot\'a promedio}
   \begin{columns}[c, onlytextwidth]
     \begin{column}{0.64\textwidth}
       \centering
@@ -248,25 +269,28 @@
 \end{frame}
 
 \begin{frame}{Ni la CV espacial nos dice el error en Chapinero: creamos pseudo-Chapineros}
+  \vspace{3mm}
   \begin{columns}[c, onlytextwidth]
     \begin{column}{0.42\textwidth}
       \centering
-      \vspace{6mm}
-      \includegraphics[width=\linewidth, height=0.72\textheight, keepaspectratio]{best_pseudo_chapinero_mapa}
+      \includegraphics[width=\linewidth, height=0.8\textheight, keepaspectratio]{best_pseudo_chapinero_mapa}
     \end{column}
     \begin{column}{0.55\textwidth}
-      \small
+      \footnotesize
       Sin precios en Chapinero no podemos medir qu\'e validaci\'on anticipa su error. Lo simulamos dentro de train:
-      \begin{enumerate}\setlength{\itemsep}{3pt}
+      \begin{enumerate}\setlength{\itemsep}{2pt}
         \item Elegimos las 3 zonas de train \textbf{m\'as parecidas a Chapinero} (regresi\'on log\'istica con las caracter\'isticas de la vivienda y del entorno).
         \item Las apartamos y medimos el \textbf{error real} en ellas.
         \item Lo comparamos con el error que \textbf{promet\'ia cada validaci\'on}.
       \end{enumerate}
-      \vspace{2mm}
-      De aqu\'i salen los porcentajes de la slide anterior.
+      \vspace{1mm}
+      \begin{block}{Resultado: una validaci\'on m\'as acertada}
+        \footnotesize La aleatoria prometi\'o \PrometeAleatoria\% menos error del real y la de 5 regiones, \PrometeCinco\% m\'as. La de 20 regiones se equivoc\'o solo en \PrometeVeinte\%: por eso es la que usamos para elegir modelos.
+      \end{block}
+      \vspace{1mm}
+      {\scriptsize\color{black!60}Promedio de 3 zonas y 2 modelos (Random Forest y regresi\'on lineal).\par}
     \end{column}
   \end{columns}
-  \nota{Promedio de 3 zonas y 2 modelos (Random Forest y regresi\'on lineal).}
 \end{frame}
 
 \begin{frame}{Probamos 8 formas de validar: la de 20 regiones es la m\'as cercana al error real}
@@ -332,24 +356,6 @@
   \nota{Si el anuncio no trae el \'area (\PctSuperficieImputada{} de Chapinero), el paso 2 predice directamente el precio total.}
 \end{frame}
 
-\begin{frame}{Del MAE de \MAEBase{} millones al de \MAEKaggle}
-  \begin{columns}[c, onlytextwidth]
-    \begin{column}{0.62\textwidth}
-      \centering
-      \includegraphics[width=\linewidth, height=0.82\textheight, keepaspectratio]{best_cascada_kaggle}
-    \end{column}
-    \begin{column}{0.35\textwidth}
-      \footnotesize
-      \begin{itemize}\setlength{\itemsep}{2pt}
-        \item \textbf{Referencia (gris):} la misma regresi\'on lineal con 17 y con 174 variables. La diferencia (\MejoraLMTexto{} millones) es lo que aportan las variables de entorno y de texto.
-        \item \textbf{LightGBM} con esas 174 variables baja otros 37: capta relaciones no lineales e interacciones.
-        \item \textbf{Precio por m\textsuperscript{2} y vecinos} atacan el problema de Chapinero: trasladar el valor de la ubicaci\'on.
-        \item \textbf{La red neuronal} baja \MejoraRed{} m\'as: los \'arboles no predicen fuera de los precios que vieron; la red s\'i, y al promediar se corrigen los extremos.
-      \end{itemize}
-    \end{column}
-  \end{columns}
-\end{frame}
-
 \begin{frame}{Entrenamiento y elecci\'on de hiperpar\'ametros}
   \vspace{2mm}
   \centering
@@ -370,11 +376,30 @@
   \nota{Todos los modelos se eval\'uan con las mismas particiones de la validaci\'on cruzada, para que sus errores sean comparables.}
 \end{frame}
 
+\begin{frame}{Del MAE de \MAEBase{} millones al de \MAEKaggle}
+  \begin{columns}[c, onlytextwidth]
+    \begin{column}{0.62\textwidth}
+      \centering
+      \includegraphics[width=\linewidth, height=0.82\textheight, keepaspectratio]{best_cascada_kaggle}
+    \end{column}
+    \begin{column}{0.35\textwidth}
+      \footnotesize
+      \begin{itemize}\setlength{\itemsep}{2pt}
+        \item \textbf{Referencia (gris):} la misma regresi\'on lineal con 17 y con 174 variables. La diferencia (\MejoraLMTexto{} millones) es lo que aportan las variables de entorno y de texto.
+        \item \textbf{LightGBM} con esas 174 variables baja otros 37: capta relaciones no lineales e interacciones.
+        \item \textbf{Precio por m\textsuperscript{2} y vecinos} atacan el problema de Chapinero: trasladar el valor de la ubicaci\'on.
+        \item \textbf{La red neuronal} baja \MejoraRed{} m\'as: los \'arboles no predicen fuera de los precios que vieron; la red s\'i, y al promediar se corrigen los extremos.
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
 \begin{frame}{¿Qu\'e mira el modelo? Primero la ubicaci\'on, luego el tama\~no}
+  \vspace{4mm}
   \begin{columns}[c, onlytextwidth]
     \begin{column}{0.75\textwidth}
       \centering
-      \includegraphics[width=\linewidth, height=0.88\textheight, keepaspectratio]{best_importancia}
+      \includegraphics[width=\linewidth, height=0.8\textheight, keepaspectratio]{best_importancia}
     \end{column}
     \begin{column}{0.23\textwidth}
       \footnotesize
@@ -382,7 +407,6 @@
         \item El precio por m\textsuperscript{2} de los vecinos es la variable principal: resume cu\'anto vale la zona.
         \item \textbf{Por bloques, la ubicaci\'on suma \GainUbicacion\%} de la ganancia (entorno y vecinos), la vivienda \GainVivienda\% y el texto \GainTexto\%.
         \item Latitud y longitud captan el gradiente de precios: m\'as caro al norte y al oriente.
-        \item No son efectos causales.
       \end{itemize}
     \end{column}
   \end{columns}

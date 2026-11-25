@@ -154,12 +154,34 @@
 % ============================================================
 
 \begin{frame}{Chapinero no es la Bogot\'a promedio}
+  \vspace{6mm}
   \begin{columns}[c, onlytextwidth]
-    \begin{column}{0.6\textwidth}
+    \begin{column}{0.5\textwidth}
       \centering
-      \includegraphics[width=\linewidth, height=0.82\textheight, keepaspectratio]{best_chapinero_distinto}
+      \includegraphics[width=\linewidth, height=0.8\textheight, keepaspectratio]{best_mapa_precio_m2}
     \end{column}
-    \begin{column}{0.37\textwidth}
+    \begin{column}{0.47\textwidth}
+      \small
+      \begin{itemize}\setlength{\itemsep}{4pt}
+        \item Cada hex\'agono resume los anuncios de train en \LadoHexagono{} m: su precio mediano por m\textsuperscript{2}.
+        \item El m\textsuperscript{2} es m\'as caro en el nororiente de la ciudad, y Chapinero (contorno negro) est\'a en ese corredor.
+        \item Los \NZonaChapinero{} anuncios de train que caen en la zona de Chapinero valen \MdosZonaChapinero{} millones por m\textsuperscript{2}, frente a \MdosBogota{} de la mediana de Bogot\'a.
+        \item Por eso el modelo necesita saber cu\'anto vale la zona: usamos el precio de los vecinos y validamos por regiones.
+      \end{itemize}
+      \vspace{1mm}
+      {\scriptsize\color{black!60}Descriptivo, no causal.\par}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Chapinero no es la Bogot\'a promedio}
+  \vspace{4mm}
+  \begin{columns}[c, onlytextwidth]
+    \begin{column}{0.54\textwidth}
+      \centering
+      \includegraphics[width=\linewidth, height=0.74\textheight, keepaspectratio]{best_chapinero_distinto}
+    \end{column}
+    \begin{column}{0.43\textwidth}
       \footnotesize
       \begin{itemize}\setlength{\itemsep}{1pt}
         \item \textbf{Train:} \NTrain{} anuncios de Bogot\'a con precio. \textbf{Test:} \NTest{} anuncios de Chapinero, sin precio.
@@ -193,6 +215,7 @@
 \end{frame}
 
 \begin{frame}{De 17 a 177 variables: qu\'e informaci\'on probamos}
+  \vspace{3mm}
   \centering
   {\scriptsize\renewcommand{\arraystretch}{0.95}\setlength{\tabcolsep}{4pt}
   \begin{tabular}{>{\raggedright\arraybackslash}p{0.11\textwidth}>{\raggedright\arraybackslash}p{0.64\textwidth}r>{\raggedright\arraybackslash}p{0.13\textwidth}}
@@ -207,6 +230,7 @@
   \end{tabular}}
   \vspace{1mm}
 
+  {\setbeamerfont{block title}{size=\footnotesize}
   \begin{columns}[T, totalwidth=0.78\textwidth]
     \begin{column}{0.46\linewidth}
       \begin{block}{Precio por m\textsuperscript{2}}
@@ -219,7 +243,7 @@
         \scriptsize Se imputan con la mediana de su tipo de vivienda y se marcan con un indicador, para que el modelo distinga un dato imputado de uno real.
       \end{block}
     \end{column}
-  \end{columns}
+  \end{columns}}
 \end{frame}
 
 % ============================================================
@@ -251,24 +275,25 @@
 \end{frame}
 
 \begin{frame}{Ni la CV espacial nos dice el error en Chapinero: creamos pseudo-Chapineros}
+  \vspace{3mm}
   \begin{columns}[c, onlytextwidth]
     \begin{column}{0.42\textwidth}
       \centering
-      \vspace{4mm}
-      \includegraphics[width=\linewidth, height=0.84\textheight, keepaspectratio]{best_pseudo_chapinero_mapa}
+      \includegraphics[width=\linewidth, height=0.8\textheight, keepaspectratio]{best_pseudo_chapinero_mapa}
     \end{column}
     \begin{column}{0.55\textwidth}
-      \small
+      \footnotesize
       Sin precios en Chapinero no podemos medir qu\'e validaci\'on anticipa su error. Lo simulamos dentro de train:
-      \begin{enumerate}\setlength{\itemsep}{3pt}
+      \begin{enumerate}\setlength{\itemsep}{2pt}
         \item Elegimos las 3 zonas de train \textbf{m\'as parecidas a Chapinero} (regresi\'on log\'istica con las caracter\'isticas de la vivienda y del entorno).
         \item Las apartamos y medimos el \textbf{error real} en ellas.
         \item Lo comparamos con el error que \textbf{promet\'ia cada validaci\'on}.
       \end{enumerate}
-      \vspace{2mm}
-      De aqu\'i salen los porcentajes de la slide anterior.
-      \vspace{2mm}
-
+      \vspace{1mm}
+      \begin{block}{Resultado: una validaci\'on m\'as acertada}
+        \footnotesize La aleatoria prometi\'o \PrometeAleatoria\% menos error del real y la de 5 regiones, \PrometeCinco\% m\'as. La de 20 regiones se equivoc\'o solo en \PrometeVeinte\%: por eso es la que usamos para elegir modelos.
+      \end{block}
+      \vspace{1mm}
       {\scriptsize\color{black!60}Promedio de 3 zonas y 2 modelos (Random Forest y regresi\'on lineal).\par}
     \end{column}
   \end{columns}
@@ -301,14 +326,14 @@
   \begin{columns}[T, totalwidth=0.74\textwidth]
     \begin{column}{0.46\linewidth}
       \begin{block}{Mismos folds}
-        \footnotesize Validaci\'on espacial de 20 regiones y aleatoria, iguales para todos.
+        \footnotesize\parbox[t][0.9cm][t]{\linewidth}{Validaci\'on espacial de 20 regiones y aleatoria, iguales para todos.}
       \end{block}
     \end{column}
     \begin{column}{0.06\linewidth}
     \end{column}
     \begin{column}{0.46\linewidth}
       \begin{block}{Misma m\'etrica}
-        \footnotesize MAE en millones de pesos, la m\'etrica de Kaggle.
+        \footnotesize\parbox[t][0.9cm][t]{\linewidth}{MAE en millones de pesos, la m\'etrica de Kaggle.}
       \end{block}
     \end{column}
   \end{columns}
@@ -388,24 +413,8 @@
   \end{columns}
 \end{frame}
 
-\begin{frame}{¿Qu\'e informaci\'on aprovecha el modelo ganador?}
-  \begin{columns}[c, onlytextwidth]
-    \begin{column}{0.72\textwidth}
-      \centering
-      \includegraphics[width=\linewidth, height=0.86\textheight, keepaspectratio]{best_importancia}
-    \end{column}
-    \begin{column}{0.25\textwidth}
-      \footnotesize
-      \begin{itemize}
-        \item El precio por m\textsuperscript{2} de los vecinos es la variable con m\'as ganancia; despu\'es, la superficie.
-        \item Por bloques, la ubicaci\'on suma \GainUbicacion\%, la vivienda \GainVivienda\% y el texto \GainTexto\%.
-        \item No son efectos causales.
-      \end{itemize}
-    \end{column}
-  \end{columns}
-\end{frame}
-
 \begin{frame}{Los tres modelos de \'arboles coinciden en lo que importa}
+  \vspace{4mm}
   \begin{columns}[c, onlytextwidth]
     \begin{column}{0.62\textwidth}
       \centering
@@ -414,10 +423,28 @@
     \begin{column}{0.35\textwidth}
       \footnotesize
       \begin{itemize}
-        \item Con las mismas 174 variables, CART, Random Forest y LightGBM comparten sus \NTopComunes{} variables m\'as importantes: ba\~nos, superficie, distancia al empleo y longitud.
+        \item Con las mismas 174 variables y el precio total, CART, Random Forest y LightGBM comparten sus \NTopComunes{} variables m\'as importantes: el tama\~no (ba\~nos y superficie) y la ubicaci\'on (distancia al centro de empleo y longitud).
         \item Coinciden en \emph{qu\'e} mirar; difieren en \emph{c\'omo} lo combinan, y por eso su error es distinto.
         \item LightGBM reparte m\'as la importancia entre variables de entorno.
         \item Cada modelo mide la importancia a su manera: se comparan porcentajes, no niveles.
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{¿Qu\'e informaci\'on aprovecha el modelo ganador?}
+  \begin{columns}[c, onlytextwidth]
+    \begin{column}{0.64\textwidth}
+      \centering
+      \includegraphics[width=\linewidth, height=0.86\textheight, keepaspectratio]{best_importancia}
+    \end{column}
+    \begin{column}{0.33\textwidth}
+      \footnotesize
+      \begin{itemize}\setlength{\itemsep}{2pt}
+        \item \textbf{Frente a la slide anterior}, el ganador agrega el precio de los vecinos y predice el precio por m\textsuperscript{2}.
+        \item El precio de los vecinos resume la ubicaci\'on y pasa al primer lugar; superficie y distancia al centro de empleo siguen arriba.
+        \item Los ba\~nos salen del top: el tama\~no ya est\'a en el precio por m\textsuperscript{2}.
+        \item Por bloques, la ubicaci\'on suma \GainUbicacion\%, la vivienda \GainVivienda\% y el texto \GainTexto\%.
       \end{itemize}
     \end{column}
   \end{columns}
@@ -547,8 +574,30 @@
   \end{columns}
 \end{frame}
 
+\begin{frame}{Para comprar con el mejor modelo hay que aceptar dos trade-offs}
+  \vspace{4mm}
+  \begin{block}{Condici\'on: comprar solo con descuento}
+    \small Ofrecer \MargenRegla{} menos de lo que predice el modelo: las compras pagadas de m\'as bajan de \RiesgoSinMargen{} a \RiesgoRegla.
+  \end{block}
+  \vspace{3mm}
+  \begin{columns}[T, onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{alertblock}{M\'as precisi\'on, menos interpretabilidad}
+        \small\parbox[t][1.3cm][t]{\linewidth}{\raggedright El menor error (\MAEKaggle{} millones), pero con dos modelos dif\'iciles de explicar.}
+      \end{alertblock}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{alertblock}{Menos riesgo, menos compras}
+        \small\parbox[t][1.3cm][t]{\linewidth}{\raggedright La oferta queda \OfertaTipica{} bajo el precio: menos vendedores la aceptan.}
+      \end{alertblock}
+    \end{column}
+  \end{columns}
+\end{frame}
+
 % ============================================================
 \appendix
+
+
 
 \begin{frame}[standout]
   ¡Gracias!
