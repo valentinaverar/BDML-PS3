@@ -94,6 +94,9 @@
   pieza/.style={draw=accent, fill=accent!8, rounded corners=3pt,
     text width=1.6cm, minimum height=1.25cm, align=center, inner sep=3pt,
     font=\scriptsize}}
+% Caja de conclusión de altura fija (todas del mismo tamaño).
+\newcommand{\caja}[2]{%
+  \begin{alertblock}{#1}\scriptsize\parbox[t][2cm][t]{\dimexpr\linewidth-2.6ex\relax}{\raggedright #2}\end{alertblock}}
 \newcommand{\valorpaso}[1]{{\small\bfseries\color{azuloscuro}#1}}
 
 % ============================================================
@@ -158,7 +161,7 @@
     \end{column}
     \begin{column}{0.37\textwidth}
       \footnotesize
-      \begin{itemize}\setlength{\itemsep}{2pt}
+      \begin{itemize}\setlength{\itemsep}{1pt}
         \item \textbf{Train:} \NTrain{} anuncios de Bogot\'a con precio. \textbf{Test:} \NTest{} anuncios de Chapinero, sin precio.
         \item \textbf{Otra composici\'on:} en Chapinero el \PctAptoTest{} son apartamentos; en train, el \PctAptoTrain.
         \item \textbf{Un mercado m\'as caro:} las viviendas de train parecidas a Chapinero valen en promedio \PrecioMedioSimilares{} millones, frente a \PrecioMedioResto{} del resto.
@@ -170,10 +173,11 @@
 \end{frame}
 
 \begin{frame}{El precio por m\textsuperscript{2} no es constante}
+  \vspace{5mm}
   \begin{columns}[c, onlytextwidth]
     \begin{column}{0.62\textwidth}
       \centering
-      \includegraphics[width=\linewidth, height=0.82\textheight, keepaspectratio]{compare_precio_m2}
+      \includegraphics[width=\linewidth, height=0.74\textheight, keepaspectratio]{compare_precio_m2}
     \end{column}
     \begin{column}{0.35\textwidth}
       \footnotesize
@@ -184,34 +188,35 @@
       \end{itemize}
     \end{column}
   \end{columns}
-  \nota{\NApartamentosArea{} apartamentos de train con superficie observada entre 20 y 500 m\textsuperscript{2}. Descriptivo, no causal.}
+  \vspace{2mm}
+  {\scriptsize\color{black!60}\NApartamentosArea{} apartamentos de train con superficie observada entre 20 y 500 m\textsuperscript{2}. Descriptivo, no causal.\par}
 \end{frame}
 
 \begin{frame}{De 17 a 177 variables: qu\'e informaci\'on probamos}
-  \vspace{2mm}
   \centering
-  {\small
-  \begin{tabular}{>{\raggedright\arraybackslash}p{0.17\textwidth}>{\raggedright\arraybackslash}p{0.43\textwidth}r>{\raggedright\arraybackslash}p{0.21\textwidth}}
+  {\scriptsize\renewcommand{\arraystretch}{0.95}\setlength{\tabcolsep}{4pt}
+  \begin{tabular}{>{\raggedright\arraybackslash}p{0.11\textwidth}>{\raggedright\arraybackslash}p{0.64\textwidth}r>{\raggedright\arraybackslash}p{0.13\textwidth}}
     \toprule
     Conjunto & Qu\'e contiene & Variables & Lo usan \\
     \midrule
-    Base & Lo que trae Kaggle: superficie, ba\~nos, habitaciones, tipo, coordenadas, fecha y calidad del dato & 17 & Regresi\'on lineal \\
-    Completo & + entorno (OpenStreetMap y datos abiertos) y texto (\NRaices{} palabras, parqueaderos y piso) & 174 & Las seis familias \\
-    Ampliado & + 12.000 t\'erminos TF-IDF de la descripci\'on & 12.174 & Elastic Net y LightGBM \\
-    Completo + vecinos & + precio y precio por m\textsuperscript{2} de los 10 vecinos de train, y su distancia & 177 & LightGBM (mejor modelo) \\
+    Base & \textbf{Solo lo que trae Kaggle:} superficie cubierta y total, ba\~nos, habitaciones, ambientes, tipo de vivienda, coordenadas y fecha, m\'as indicadores de superficie problem\'atica o faltante. & 17 & Regresi\'on lineal \\
+    Completo & \textbf{+ Entorno} (OpenStreetMap y datos abiertos): estrato de la manzana; distancias al centro de empleo, a TransMilenio, a v\'ias principales, parques, centros comerciales y universidades; zona verde y restaurantes a 500 m; pendiente. \textbf{+ Texto:} \NRaices{} palabras que aparecen en al menos el 5\% de los anuncios, y cantidades extra\'idas de la descripci\'on (\'area, ba\~nos, parqueaderos y piso). & 174 & Las seis familias \\
+    Ampliado & \textbf{+ 12.000 t\'erminos TF-IDF} de la descripci\'on: palabras y pares de palabras, con su peso seg\'un qu\'e tan raros son. & 12.174 & Elastic Net y LightGBM \\
+    Completo + vecinos & \textbf{+ Precio de los vecinos:} mediana del precio y del precio por m\textsuperscript{2} de las 10 viviendas de train m\'as cercanas, y su distancia. & 177 & LightGBM (mejor modelo) \\
     \bottomrule
   \end{tabular}}
-  \vspace{4mm}
+  \vspace{1mm}
 
-  \begin{columns}[T, onlytextwidth]
-    \begin{column}{0.48\textwidth}
+  \begin{columns}[T, totalwidth=0.78\textwidth]
+    \begin{column}{0.46\linewidth}
       \begin{block}{Precio por m\textsuperscript{2}}
-        \footnotesize Solo donde se conoce el \'area (\PctSuperficieReal{} de Chapinero). Donde se imput\'o con la mediana de su tipo de vivienda, el modelo predice el precio total.
+        \scriptsize Solo donde se conoce el \'area (\PctSuperficieReal{} de Chapinero). Donde se imput\'o con la mediana de su tipo de vivienda, el modelo predice el precio total.
       \end{block}
     \end{column}
-    \begin{column}{0.48\textwidth}
+    \begin{column}{0.06\linewidth}\end{column}
+    \begin{column}{0.46\linewidth}
       \begin{block}{Datos faltantes}
-        \footnotesize Se imputan con la mediana de su tipo de vivienda y se marcan con un indicador, para que el modelo distinga un dato imputado de uno real.
+        \scriptsize Se imputan con la mediana de su tipo de vivienda y se marcan con un indicador, para que el modelo distinga un dato imputado de uno real.
       \end{block}
     \end{column}
   \end{columns}
@@ -249,8 +254,8 @@
   \begin{columns}[c, onlytextwidth]
     \begin{column}{0.42\textwidth}
       \centering
-      \vspace{6mm}
-      \includegraphics[width=\linewidth, height=0.72\textheight, keepaspectratio]{best_pseudo_chapinero_mapa}
+      \vspace{4mm}
+      \includegraphics[width=\linewidth, height=0.84\textheight, keepaspectratio]{best_pseudo_chapinero_mapa}
     \end{column}
     \begin{column}{0.55\textwidth}
       \small
@@ -262,9 +267,11 @@
       \end{enumerate}
       \vspace{2mm}
       De aqu\'i salen los porcentajes de la slide anterior.
+      \vspace{2mm}
+
+      {\scriptsize\color{black!60}Promedio de 3 zonas y 2 modelos (Random Forest y regresi\'on lineal).\par}
     \end{column}
   \end{columns}
-  \nota{Promedio de 3 zonas y 2 modelos (Random Forest y regresi\'on lineal).}
 \end{frame}
 
 % ============================================================
@@ -291,18 +298,15 @@
   \end{tabular}}
   \vspace{2mm}
 
-  \begin{columns}[T, onlytextwidth]
-    \begin{column}{0.31\textwidth}
-      \begin{block}{Misma informaci\'on}
-        \footnotesize Las mismas 174 variables: vivienda, entorno y texto.
-      \end{block}
-    \end{column}
-    \begin{column}{0.31\textwidth}
+  \begin{columns}[T, totalwidth=0.74\textwidth]
+    \begin{column}{0.46\linewidth}
       \begin{block}{Mismos folds}
         \footnotesize Validaci\'on espacial de 20 regiones y aleatoria, iguales para todos.
       \end{block}
     \end{column}
-    \begin{column}{0.31\textwidth}
+    \begin{column}{0.06\linewidth}
+    \end{column}
+    \begin{column}{0.46\linewidth}
       \begin{block}{Misma m\'etrica}
         \footnotesize MAE en millones de pesos, la m\'etrica de Kaggle.
       \end{block}
@@ -367,23 +371,6 @@
   \end{columns}
 \end{frame}
 
-\begin{frame}{¿Qu\'e informaci\'on aprovecha el modelo ganador?}
-  \begin{columns}[c, onlytextwidth]
-    \begin{column}{0.72\textwidth}
-      \centering
-      \includegraphics[width=\linewidth, height=0.86\textheight, keepaspectratio]{best_importancia}
-    \end{column}
-    \begin{column}{0.25\textwidth}
-      \footnotesize
-      \begin{itemize}
-        \item El precio por m\textsuperscript{2} de los vecinos es la variable con m\'as ganancia; despu\'es, la superficie.
-        \item Por bloques, la ubicaci\'on suma \GainUbicacion\%, la vivienda \GainVivienda\% y el texto \GainTexto\%.
-        \item No son efectos causales.
-      \end{itemize}
-    \end{column}
-  \end{columns}
-\end{frame}
-
 \begin{frame}{M\'as variables de texto no siempre ayudan}
   \begin{columns}[c, onlytextwidth]
     \begin{column}{0.56\textwidth}
@@ -401,7 +388,42 @@
   \end{columns}
 \end{frame}
 
-\begin{frame}{Los \'arboles se quedan cortos en viviendas como las de Chapinero; la red no}
+\begin{frame}{¿Qu\'e informaci\'on aprovecha el modelo ganador?}
+  \begin{columns}[c, onlytextwidth]
+    \begin{column}{0.72\textwidth}
+      \centering
+      \includegraphics[width=\linewidth, height=0.86\textheight, keepaspectratio]{best_importancia}
+    \end{column}
+    \begin{column}{0.25\textwidth}
+      \footnotesize
+      \begin{itemize}
+        \item El precio por m\textsuperscript{2} de los vecinos es la variable con m\'as ganancia; despu\'es, la superficie.
+        \item Por bloques, la ubicaci\'on suma \GainUbicacion\%, la vivienda \GainVivienda\% y el texto \GainTexto\%.
+        \item No son efectos causales.
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Los tres modelos de \'arboles coinciden en lo que importa}
+  \begin{columns}[c, onlytextwidth]
+    \begin{column}{0.62\textwidth}
+      \centering
+      \includegraphics[width=\linewidth, height=0.84\textheight, keepaspectratio]{compare_importancia_arboles}
+    \end{column}
+    \begin{column}{0.35\textwidth}
+      \footnotesize
+      \begin{itemize}
+        \item Con las mismas 174 variables, CART, Random Forest y LightGBM comparten sus \NTopComunes{} variables m\'as importantes: ba\~nos, superficie, distancia al empleo y longitud.
+        \item Coinciden en \emph{qu\'e} mirar; difieren en \emph{c\'omo} lo combinan, y por eso su error es distinto.
+        \item LightGBM reparte m\'as la importancia entre variables de entorno.
+        \item Cada modelo mide la importancia a su manera: se comparan porcentajes, no niveles.
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Cada familia se equivoca en una direcci\'on distinta: los \'arboles subestiman}
   \begin{columns}[c, onlytextwidth]
     \begin{column}{0.62\textwidth}
       \centering
@@ -437,7 +459,8 @@
 \end{frame}
 
 \begin{frame}{Del MAE de \MAEBase{} millones al de \MAEKaggle}
-  \begin{columns}[c, onlytextwidth]
+  \vspace{4mm}
+  \begin{columns}[T, onlytextwidth]
     \begin{column}{0.62\textwidth}
       \centering
       \includegraphics[width=\linewidth, height=0.82\textheight, keepaspectratio]{best_cascada_kaggle}
@@ -445,7 +468,7 @@
     \begin{column}{0.35\textwidth}
       \footnotesize
       \begin{itemize}\setlength{\itemsep}{2pt}
-        \item \textbf{Referencia (gris):} la misma regresi\'on lineal con 17 y con 174 variables. La diferencia (\MejoraLMTexto{} millones) es lo que aportan las variables de entorno y de texto.
+        \item \textbf{Referencia (gris):} regresi\'on lineal con 17 y 174 variables; entorno y texto bajan \MejoraLMTexto{} millones.
         \item \textbf{LightGBM} con esas 174 variables baja otros 37: capta relaciones no lineales e interacciones.
         \item \textbf{Precio por m\textsuperscript{2} y vecinos} atacan el problema de Chapinero: trasladar el valor de la ubicaci\'on.
         \item \textbf{La mezcla final} ($0{,}75 \times$ LightGBM con vecinos $+ \; 0{,}25 \times$ red) baja el error \MejoraRed{} millones (\MejoraRedPct\%): los errores de los dos modelos se compensan en parte, aunque eso no garantiza que gane en cada vivienda.
@@ -507,31 +530,19 @@
 \end{frame}
 
 \begin{frame}{Conclusiones: por qu\'e gan\'o el modelo que gan\'o}
-  \vspace{1mm}
-  \begin{columns}[T, onlytextwidth]
-    \begin{column}{0.32\textwidth}
-      \begin{alertblock}{Algoritmo}
-        \scriptsize Con las mismas reglas gana LightGBM (\CompEspLGBM{} frente a \CompEspRed{} de la red): capta relaciones no lineales e interacciones mejor que los modelos lineales y que los otros \'arboles.
-      \end{alertblock}
-      \begin{alertblock}{Validaci\'on}
-        \scriptsize La aleatoria elige Random Forest; la espacial, LightGBM, y Kaggle le da la raz\'on. Ninguna anticipa el error en Chapinero (\MAECVEspacial{} frente a \MAEKaggle).
-      \end{alertblock}
+  \vspace{2mm}
+  \begin{columns}[T, totalwidth=\textwidth]
+    \begin{column}{0.3\linewidth}
+      \caja{Algoritmo}{Con las mismas reglas gana LightGBM (\CompEspLGBM{} frente a \CompEspRed{} de la red): capta relaciones no lineales e interacciones mejor que los modelos lineales y que los otros \'arboles.}
+      \caja{Validaci\'on}{La aleatoria elige Random Forest; la espacial, LightGBM, y Kaggle le da la raz\'on. Ninguna anticipa el error en Chapinero (\MAECVEspacial{} frente a \MAEKaggle).}
     \end{column}
-    \begin{column}{0.32\textwidth}
-      \begin{alertblock}{Variables}
-        \scriptsize Fueron lo que m\'as baj\'o el error: entorno y texto (\RedInformacion{} millones en la validaci\'on), precio por m\textsuperscript{2} y vecinos. M\'as texto solo ayud\'o al modelo lineal.
-      \end{alertblock}
-      \begin{alertblock}{Ajuste}
-        \scriptsize Entre la peor y la mejor de \NBusLGBM{} combinaciones de hiperpar\'ametros hay solo \RedHiper{} millones. Pes\'o m\'as qu\'e predecir (precio por m\textsuperscript{2}) y c\'omo mezclar.
-      \end{alertblock}
+    \begin{column}{0.3\linewidth}
+      \caja{Variables}{Fueron lo que m\'as baj\'o el error: entorno y texto (\RedInformacion{} millones en la validaci\'on), precio por m\textsuperscript{2} y vecinos. M\'as texto solo ayud\'o al modelo lineal.}
+      \caja{Ajuste}{Entre la peor y la mejor de \NBusLGBM{} combinaciones de hiperpar\'ametros hay solo \RedHiper{} millones. Pes\'o m\'as qu\'e predecir (precio por m\textsuperscript{2}) y c\'omo mezclar.}
     \end{column}
-    \begin{column}{0.32\textwidth}
-      \begin{alertblock}{Caracter\'isticas de los datos}
-        \scriptsize El precio por m\textsuperscript{2} cambia con el tama\~no y el tipo, y depende de la ubicaci\'on: favorece a los \'arboles y a los vecinos. Chapinero es m\'as caro: ah\'i los \'arboles se quedan cortos y la red los complementa.
-      \end{alertblock}
-      \begin{alertblock}{Trade-off}
-        \scriptsize El mejor modelo tiene el menor error (\MAEKaggle), a costa de dos modelos y m\'as dif\'icil de explicar. Para comprar sirve, ofreciendo \MargenRegla{} menos de lo que predice.
-      \end{alertblock}
+    \begin{column}{0.3\linewidth}
+      \caja{Caracter\'isticas de los datos}{El precio por m\textsuperscript{2} cambia con el tama\~no y el tipo, y depende de la ubicaci\'on: favorece a los \'arboles y a los vecinos. Chapinero es m\'as caro: ah\'i los \'arboles se quedan cortos y la red los complementa.}
+      \caja{Trade-off}{El mejor modelo tiene el menor error (\MAEKaggle), a costa de dos modelos y m\'as dif\'icil de explicar. Para comprar sirve, ofreciendo \MargenRegla{} menos de lo que predice.}
     \end{column}
   \end{columns}
 \end{frame}

@@ -13,6 +13,8 @@
 # Insumos:  03_temp/train_features.rds (script 04);
 #           02_outputs/tables/registro_modelos.csv (scripts 07 a 12),
 #           LGBM_completo_ensayos.csv (script 11), BLEND_m2_red_pesos.csv
+#           (script 16), *_completo_importancia.csv de CART, Random Forest y
+#           LightGBM (scripts 09 a 11)
 #           (script 16) y *_busqueda.csv (scripts 08 a 12);
 #           00_data/kaggle_scores.csv.
 # Salidas:  02_outputs/figures/compare_*.pdf y
@@ -329,7 +331,7 @@ grafico_sesgo <- familias |>
   scale_fill_manual(values = c("Árboles" = color_2, "Lineales y red" = color_3),
                     name = NULL) +
   scale_x_continuous(expand = expansion(mult = 0.15)) +
-  labs(title = "Los árboles se quedan cortos en viviendas como las de Chapinero",
+  labs(title = "Cada familia se equivoca en una dirección distinta",
        subtitle = "Sesgo medio: promedio de (predicción - precio real), millones de pesos",
        x = "Sesgo (millones); negativo = el modelo se queda corto", y = NULL,
        caption = paste0("10% de train más parecido a Chapinero, predicciones fuera de ",
@@ -367,6 +369,66 @@ grafico_pesos <- curva_pesos |>
        caption = "Predicciones fuera de muestra con la CV espacial (script 16).") +
   tema
 fun_guardar(grafico_pesos, "compare_peso_red", 7.5, 4.6)
+
+# 5c. ¿Los árboles coinciden en las variables importantes? -----------------
+# Importancia de las 174 variables en los tres modelos de árboles de
+# precio total: reducción de impureza en CART y Random Forest, ganancia en
+# LightGBM. Cada una se expresa como % del total de su modelo para poder
+# compararlas. Se muestran las 10 de mayor importancia promedio.
+fun_importancia <- function(.archivo, .modelo, .var, .valor) {
+  read.csv(.archivo) |>
+    transmute(variable = .data[[.var]], valor = .data[[.valor]]) |>
+    mutate(pct = 100 * valor / sum(valor), modelo = .modelo)
+}
+importancia_arboles <- bind_rows(
+  fun_importancia("02_outputs/tables/CART_completo_importancia.csv", "CART",
+                  "variable", "importancia"),
+  fun_importancia("02_outputs/tables/RF_completo_importancia.csv", "Random Forest",
+                  "variable", "importancia"),
+  fun_importancia("02_outputs/tables/LGBM_completo_importancia.csv", "LightGBM",
+                  "Feature", "Gain")
+)
+nombres_var <- c(
+  bathrooms_completa = "Baños", surface_covered_completa = "Superficie cubierta",
+  surface_total_completa = "Superficie total", dist_centro_empleo_m = "Distancia al empleo",
+  lon = "Longitud", lat = "Latitud", bedrooms = "Habitaciones", rooms = "Ambientes",
+  estrato_manzana = "Estrato", txt_parqueaderos = "Parqueaderos (texto)",
+  pct_zona_verde_500m = "Zona verde a 500 m", property_type = "Casa o apartamento",
+  dist_transmilenio_m = "Distancia a TransMilenio", dist_via_principal_m = "Distancia a vía principal",
+  pendiente_terreno_pct = "Pendiente", dist_centro_comercial_m = "Distancia a centro comercial",
+  dist_universidad_m = "Distancia a universidad", raiz_cas = "Palabra: casa")
+top_arboles <- importancia_arboles |>
+  group_by(variable) |>
+  summarise(promedio = mean(pct), .groups = "drop") |>
+  slice_max(promedio, n = 10, with_ties = FALSE)
+datos_arboles <- importancia_arboles |>
+  filter(variable %in% top_arboles$variable) |>
+  group_by(modelo) |>
+  mutate(puesto = rank(-pct)) |>
+  ungroup() |>
+  mutate(nombre = dplyr::coalesce(unname(nombres_var[variable]), variable),
+         nombre = factor(nombre, levels = rev(dplyr::coalesce(
+           unname(nombres_var[top_arboles$variable]), top_arboles$variable))),
+         modelo = factor(modelo, levels = c("CART", "Random Forest", "LightGBM")))
+grafico_arboles <- datos_arboles |>
+  ggplot(aes(x = modelo, y = nombre, fill = pct)) +
+  geom_tile(color = "white", linewidth = 1) +
+  geom_text(aes(label = paste0(fun_coma(pct, 1), "%"),
+                color = pct > stats::median(datos_arboles$pct) * 1.6),
+            size = 3.6) +
+  scale_fill_gradient(low = "#e3edf9", high = color_2, guide = "none") +
+  scale_color_manual(values = c("TRUE" = "white", "FALSE" = texto_1), guide = "none") +
+  scale_x_discrete(position = "top") +
+  labs(title = "Los tres modelos de árboles coinciden en lo importante",
+       subtitle = "Importancia de cada variable, % del total de cada modelo (precio total, 174 variables)",
+       x = NULL, y = NULL,
+       caption = paste0("CART y Random Forest: reducción de impureza; LightGBM: ganancia. ",
+                        "Las 10 variables con mayor importancia promedio.")) +
+  tema +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(color = texto_1, face = "bold", size = 11),
+        axis.text.y = element_text(color = texto_1, size = 10.5))
+fun_guardar(grafico_arboles, "compare_importancia_arboles", 7.5, 4.8)
 
 # 6. Cifras del deck ------------------------------------------------------------
 fun_cifra <- function(.x, .d = 1) ifelse(is.na(.x), "--", fun_coma(.x, .d))
@@ -415,6 +477,8 @@ cifras <- c(
   MdosAreaRepunte = fun_coma(deciles_area$area[repunte], 0),
   MdosRepunte = fun_coma(deciles_area$precio_m2[repunte], 2),
   NApartamentosArea = fun_coma(nrow(apartamentos), 0),
+  NTopComunes = sum(table(unlist(lapply(split(importancia_arboles, importancia_arboles$modelo),
+                                        function(.d) head(.d$variable[order(-.d$pct)], 5)))) == 3),
   # Cuánto baja el MAE de Kaggle al mezclar la red con el LightGBM con vecinos.
   MejoraRedPct = fun_coma(100 * (1 - min(kaggle$puntaje_publico) /
                                    fun_variante("LightGBM precio m2 + vecinos", "completo + vecinos")$kaggle / 1e6), 1),
