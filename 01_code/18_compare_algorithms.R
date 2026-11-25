@@ -1,154 +1,428 @@
-############################################################
-# PS3 | Equipo 03 | Algorithm Comparison
-# Ejecutar desde la raíz del repo. No estima modelos ni modifica insumos.
-############################################################
-local({
-  library(ggplot2)
-  library(dplyr)
-  dir.create("02_outputs/figures", recursive = TRUE, showWarnings = FALSE)
-  dir.create("02_outputs/tables", recursive = TRUE, showWarnings = FALSE)
-  train <- read.csv("00_data/raw/train.csv", fileEncoding = "UTF-8")
-  test <- read.csv("00_data/raw/test.csv", fileEncoding = "UTF-8")
-  kaggle <- read.csv("00_data/kaggle_scores.csv", fileEncoding = "UTF-8-BOM")
-  registro <- read.csv("02_outputs/tables/registro_modelos.csv", fileEncoding = "UTF-8")
-  importancia <- read.csv("02_outputs/tables/LGBM_vecinos_importancia.csv")
-  seleccion <- read.csv("02_outputs/tables/seleccion_cv.csv", fileEncoding = "UTF-8")
-  esp <- filter(registro, tipo_cv == "espacial")
-  azul <- "#2F5FA8"; gris <- "#9DA8AE"; naranja <- "#D87642"; verde <- "#268D77"; tinta <- "#293B44"
-  tema <- theme_minimal(base_size = 12) + theme(text = element_text(colour = tinta),
-    plot.title = element_text(face = "bold", size = 13), panel.grid.minor = element_blank(),
-    legend.position = "top", panel.grid.major.y = element_blank(), axis.title.y = element_blank())
-  fmt <- function(x, d=1) formatC(x, digits=d, format="f", decimal.mark=",")
-  guardar <- function(p, nombre, w=8, h=4.2) {
-    ggsave(file.path("02_outputs/figures", paste0(nombre,".pdf")), p,
-           width=w, height=h, device=if (capabilities("cairo")) cairo_pdf else "pdf")
+##########################################################
+# 18_compare_algorithms.R
+#
+# Objetivo: producir las figuras y cifras del deck de comparación de
+# algoritmos (compare_equipo_03): ranking de las seis familias con la
+# misma información, cuánto engaña la validación aleatoria a cada una,
+# qué bajó más el error (información, algoritmo o hiperparámetros), si más
+# variables de texto ayudan, y por qué mezclar árboles con la red.
+#
+# Etapa del Problem Set: Etapa 2 (entrenar y comparar algoritmos) y
+# Etapa 3 (validación espacial frente a la aleatoria).
+# Versión inicial del deck y del script: Andrés Silva.
+# Insumos:  03_temp/train_features.rds (script 04);
+#           02_outputs/tables/registro_modelos.csv (scripts 07 a 12),
+#           LGBM_completo_ensayos.csv (script 11), BLEND_m2_red_pesos.csv
+#           (script 16) y *_busqueda.csv (scripts 08 a 12);
+#           00_data/kaggle_scores.csv.
+# Salidas:  02_outputs/figures/compare_*.pdf y
+#           02_outputs/tables/compare_datos.tex (cifras del deck como
+#           comandos de LaTeX, por ejemplo \CompEspLGBM).
+#
+# Decisiones:
+#   - No entrena modelos: solo lee resultados guardados.
+#   - Comparación justa entre familias: las mismas 174 variables (conjunto
+#     completo), los mismos folds y el mismo objetivo. El ranking principal
+#     usa la CV espacial de 20 regiones con el precio total (la única
+#     variable a predecir que tienen las seis familias); el precio por m²
+#     se muestra aparte para las tres familias de árboles.
+#   - Kaggle no sirve para el ranking completo: no todas las variantes se
+#     subieron y las que se subieron no siempre tienen el mismo objetivo.
+#     Se reporta como referencia.
+#   - Las mejoras posteriores del mejor modelo (vecinos, 177 variables, y
+#     la mezcla con la red) se agregaron después de elegir el algoritmo;
+#     se muestran en el deck best_equipo_03.
+#   - Mismo estilo de figuras que los scripts 19 y 20.
+##########################################################
+
+# Objetos que ya existían en el entorno antes de correr este script. Al
+# final se borra solo lo que este script creó, sin tocar lo demás.
+objetos_previos <- ls()
+
+# Paquetes -----------------------------------------------------------------
+if (!require(pacman)) install.packages("pacman")
+pacman::p_load(dplyr, tidyr, ggplot2, patchwork, forcats)
+
+# Estilo de las figuras (el mismo de los scripts 19 y 20) --------------------
+color_1 <- "#2a78d6"        # Azul.
+color_2 <- "#0f3570"        # Azul oscuro.
+color_3 <- "#7fb0ec"        # Azul claro.
+gris <- "#a3a29b"
+texto_1 <- "#0b0b0b"
+texto_2 <- "#52514e"
+tema <- theme_minimal(base_size = 11) +
+  theme(panel.grid.minor = element_blank(),
+        axis.text = element_text(color = texto_2),
+        axis.title = element_text(color = texto_2),
+        plot.title = element_text(color = texto_1, face = "bold", hjust = 0.5,
+                                  margin = margin(b = 4)),
+        plot.subtitle = element_text(color = texto_2, hjust = 0.5,
+                                     margin = margin(b = 14)),
+        plot.caption = element_text(color = texto_2, hjust = 0.5,
+                                    margin = margin(t = 14)),
+        plot.margin = margin(12, 14, 10, 14),
+        plot.title.position = "plot",
+        plot.caption.position = "plot",
+        legend.position = "top",
+        legend.text = element_text(color = texto_2))
+fun_coma <- function(.x, .digits = 1) {
+  formatC(.x, format = "f", digits = .digits, decimal.mark = ",",
+          big.mark = ".")
+}
+fun_guardar <- function(.grafico, .nombre, .ancho = 7.5, .alto = 4.6) {
+  #' Guardar una figura en PDF
+  #'
+  #' Usa cairo_pdf si funciona en este computador. En algunas instalaciones
+  #' de R (p. ej. macOS sin XQuartz) cairo no está disponible y ggsave() no
+  #' guarda nada sin dar error; en ese caso se usa el dispositivo pdf
+  #' estándar con codificación WinAnsi (tildes, eñes, ² y ×). Al final se
+  #' verifica que el archivo exista.
+  ruta <- paste0("02_outputs/figures/", .nombre, ".pdf")
+  unlink(ruta)
+  con_cairo <- tryCatch({
+    ggsave(ruta, .grafico, width = .ancho, height = .alto, device = cairo_pdf)
+    file.exists(ruta) && file.size(ruta) > 0
+  }, warning = function(w) FALSE, error = function(e) FALSE)
+  if (!con_cairo) {
+    unlink(ruta)
+    ggsave(ruta, .grafico, width = .ancho, height = .alto,
+           device = "pdf", encoding = "WinAnsi.enc")
   }
-  public <- function(p) min(kaggle$puntaje_publico[grepl(p, kaggle$archivo)], na.rm=TRUE)/1e6
-  espacial <- function(p) min(esp$mae[grepl(p,esp$archivo)],na.rm=TRUE)/1e6
-  # 5: interacciones. No se imputan superficies para estas gráficas descriptivas.
-  a <- train |> mutate(area=coalesce(surface_covered,surface_total)) |>
-    filter(between(area,20,500),price>0) |>
-    mutate(grupo=cut(area,c(20,60,90,130,200,500),include.lowest=TRUE,
-                     labels=c("20–60","60–90","90–130","130–200","200–500")))
-  celdas <- a |> group_by(property_type,grupo) |> summarise(med=median(price)/1e6,n=n(),.groups="drop") |> filter(n>=50)
-  g <- ggplot(celdas,aes(grupo,property_type,fill=med)) + geom_tile(colour="white") +
-    geom_text(aes(label=paste0(round(med),"\n(n=",n,")"),colour=med>850),size=4.2,fontface="bold") +
-    scale_colour_manual(values=c("TRUE"="white","FALSE"=tinta),guide="none") +
-    scale_fill_gradient(low="#E4EDF8",high=azul,name="Mediana\n(M COP)") +
-    labs(title="El precio por tamaño difiere según el tipo de inmueble",x="Superficie observada (m²)",y=NULL)+tema+
-    theme(panel.grid=element_blank(),legend.position="right")
-  guardar(g,"compare_interacciones",8.1,3.65)
-  # 6: forma funcional del precio por metro cuadrado.
-  apt <- filter(a,property_type=="Apartamento") |> mutate(unit=price/area/1e6)
-  cortes <- unique(quantile(apt$area,seq(0,1,.1)))
-  deciles <- apt |> mutate(decil=cut(area,cortes,include.lowest=TRUE)) |> group_by(decil) |>
-    summarise(area=median(area),unit=median(unit),.groups="drop")
-  g <- ggplot(deciles,aes(area,unit))+geom_hline(yintercept=median(apt$unit),linetype=2,colour=gris)+
-    geom_line(colour=azul,linewidth=1)+geom_point(colour=azul,size=3)+
-    labs(title="El precio por m² no es constante",x="Superficie mediana de cada decil (m²)",y="Precio mediano por m² (M COP)",
-      caption="Línea gris: mediana global")+tema+theme(axis.title.y=element_text(),panel.grid.major.y=element_line(colour="#E4E7E9"))
-  guardar(g,"compare_forma")
-  # 7: familia, mejor MAE espacial y puntaje Kaggle de la MISMA especificación.
-  familias <- esp |> mutate(familia=case_when(grepl("^LM_",archivo)~"Regresión lineal",grepl("^EN_",archivo)~"Elastic Net",
-    grepl("^CART_",archivo)~"CART",grepl("^RF_",archivo)~"Random Forest",grepl("^LGBM_",archivo)~"LightGBM",
-    grepl("^NN_",archivo)~"Red neuronal",grepl("^BLEND_",archivo)~"Ensambles",TRUE~algoritmo)) |>
-    group_by(familia) |> mutate(variantes=n_distinct(archivo)) |> slice_min(mae,n=1,with_ties=FALSE) |> ungroup() |>
-    left_join(select(kaggle,archivo,puntaje_publico),by="archivo") |> transmute(familia,variantes,archivo,mae_cv=mae/1e6,mae_kaggle=puntaje_publico/1e6)
-  write.csv(familias,"02_outputs/tables/compare_familias_cv.csv",row.names=FALSE)
-  # 8: misma información (174 variables), misma CV espacial, sin híbridos ni vecinos.
-  ids <- c("^LGBM_completo_lr_","^NN_","^RF_completo_mtry_","^EN_completo_","^LM_completo$","^CART_completo_cp_")
-  df <- data.frame(modelo=c("LightGBM","Red neuronal","Random Forest","Elastic Net","Regresión lineal","CART"),
-                   mae=vapply(ids,espacial,numeric(1))) |> arrange(mae)
-  df$modelo <- factor(df$modelo,levels=rev(df$modelo))
-  g <- ggplot(df,aes(mae,modelo))+geom_point(aes(colour=modelo=="LightGBM"),size=3.7)+
-    geom_text(aes(label=fmt(mae,2)),hjust=-.25,size=3.6)+scale_colour_manual(values=c("TRUE"=azul,"FALSE"=gris),guide="none")+
-    expand_limits(x=max(df$mae)+13)+labs(x="MAE en CV espacial (millones de COP)")+tema
-  guardar(g,"compare_igualdad")
-  # 10: objetivo total versus híbrido precio por m², comparado en los mismos folds.
-  d <- data.frame(modelo=rep(c("CART","Random Forest","LightGBM"),2),
-    objetivo=rep(c("Precio total","Híbrido m²"),each=3),mae=c(vapply(c("^CART_completo_cp_","^RF_completo_mtry_","^LGBM_completo_lr_"),espacial,numeric(1)),
-    vapply(c("^CART_completo_m2_","^RF_completo_m2_","^LGBM_completo_m2_lr_"),espacial,numeric(1))))
-  d$modelo <- factor(d$modelo,levels=rev(c("CART","Random Forest","LightGBM")))
-  g <- ggplot(d,aes(mae,modelo))+geom_line(aes(group=modelo),colour=gris,linewidth=.7)+geom_point(aes(colour=objetivo),size=3.4)+
-    geom_text(aes(label=fmt(mae),colour=objetivo),position=position_dodge(width=.5),vjust=-1,size=3.5)+
-    scale_colour_manual(values=c("Precio total"=gris,"Híbrido m²"=azul))+labs(x="MAE CV espacial (M COP)",colour=NULL)+tema
-  guardar(g,"compare_objetivo",7.6,3.6)
-  # 11: tres mejores envíos públicos. Se empareja por nombre de archivo.
-  top <- kaggle |> arrange(puntaje_publico) |> slice_head(n=3) |> left_join(esp,by="archivo",suffix=c("","_cv"))
-  etiquetas <- c("BLEND vecinos + red","LightGBM + vecinos","BLEND m² + red")
-  comparar <- bind_rows(data.frame(modelo=etiquetas,grupo="CV espacial",mae=top$mae/1e6),
-    data.frame(modelo=etiquetas,grupo="10% similares a Chapinero",mae=top$mae_similares_chapinero/1e6),
-    data.frame(modelo=etiquetas,grupo="Kaggle público",mae=top$puntaje_publico/1e6))
-  comparar$modelo <- factor(comparar$modelo,levels=rev(etiquetas))
-  pos <- position_dodge(width=.62)
-  g <- ggplot(comparar,aes(mae,modelo,colour=grupo))+geom_point(position=pos,size=3)+
-    geom_text(aes(label=fmt(mae)),position=pos,hjust=-.25,size=3.1)+
-    scale_colour_manual(values=c("CV espacial"=gris,"10% similares a Chapinero"=azul,"Kaggle público"=naranja))+
-    expand_limits(x=max(comparar$mae,na.rm=TRUE)+10)+labs(x="MAE (M COP)",colour=NULL)+tema
-  guardar(g,"compare_tres",7.6,3.7)
-  # Mapa descriptivo: rejilla angular de aproximadamente 400 m.
-  rejilla <- train |> mutate(gx=floor(lon/.0036)*.0036+.0018,gy=floor(lat/.0036)*.0036+.0018) |>
-    group_by(gx,gy) |> summarise(med=median(price)/1e6,n=n(),.groups="drop") |> filter(n>=5)
-  g <- ggplot(rejilla,aes(gx,gy))+geom_tile(aes(fill=med),width=.0036,height=.0036)+
-    geom_point(data=test,aes(lon,lat),inherit.aes=FALSE,colour=naranja,alpha=.22,size=.35)+
-    scale_fill_gradient(low="#DDE8F8",high=azul,name="Mediana train\n(M COP)")+coord_equal()+
-    labs(title="Precios observados y territorio a predecir",caption="Naranja: test sin precios")+theme_void(base_size=12)+
-    theme(plot.title=element_text(face="bold"))
-  guardar(g,"compare_mapa",6.8,5.3)
-  # Opcional: mapa de errores REAL, si están disponibles las predicciones OOF.
-  rutas <- file.path("03_temp",c("train_model.rds","oof_blend_vecinos_red.rds","oof_lgbm_vecinos.rds","oof_blend_red.rds"))
-  salida_oof <- "02_outputs/figures/compare_errores_oof.pdf"
-  if (all(file.exists(rutas))) {
-    tm <- readRDS(rutas[1]); tm <- tm[,c("property_id","price","lat","lon","property_type")]
-    oof <- lapply(rutas[-1],readRDS)
-    for (i in seq_along(oof)) {
-      x <- oof[[i]]; v <- grep("_espacial$",names(x),value=TRUE)
-      stopifnot(length(v)==1L, !anyDuplicated(x$property_id))
-      tm[[paste0("pred",i)]] <- x[[v]][match(tm$property_id,x$property_id)]
-    }
-    stopifnot(!anyNA(tm[c("pred1","pred2","pred3")]))
-    tm <- tm |> mutate(gx=floor(lon/.009)*.009+.0045,gy=floor(lat/.009)*.009+.0045)
-    errores <- bind_rows(lapply(seq_along(etiquetas),function(i) data.frame(tm[,c("property_id","property_type","price","gx","gy")],
-                  modelo=etiquetas[i],err=abs(tm[[paste0("pred",i)]]-tm$price)/1e6)))
-    zonas <- errores |> group_by(gx,gy,modelo) |> summarise(mae=mean(err),n=n(),.groups="drop") |> filter(n>=30)
-    ganadores <- zonas |> group_by(gx,gy) |> slice_min(mae,n=1,with_ties=FALSE) |> ungroup()
-    colores <- setNames(c(azul,naranja,verde),etiquetas)
-    mapa <- ggplot(ganadores,aes(gx,gy,fill=modelo))+geom_tile(width=.009,height=.009)+coord_equal()+
-      scale_fill_manual(values=colores)+labs(title="Menor MAE OOF por celda (aprox. 1 km)",fill=NULL)+theme_void()+theme(legend.position="bottom",plot.title=element_text(size=10))
-    seg <- errores |> group_by(modelo,property_type) |> summarise(mae=mean(err),.groups="drop")
-    graf <- ggplot(seg,aes(mae,property_type,colour=modelo))+geom_point(position=position_dodge(width=.55),size=3)+
-      scale_colour_manual(values=colores)+labs(title="Error por tipo de inmueble",x="MAE espacial (M COP)",colour=NULL)+tema+theme(legend.position="bottom",plot.title=element_text(size=10))
-    write.csv(seg,"02_outputs/tables/compare_oof_tipo.csv",row.names=FALSE)
-    write.csv(zonas,"02_outputs/tables/compare_oof_zonas.csv",row.names=FALSE)
-    grDevices::pdf(salida_oof,width=10,height=4.2)
-    grid::grid.newpage(); lay <- grid::grid.layout(1,2); grid::pushViewport(grid::viewport(layout=lay))
-    print(mapa,vp=grid::viewport(layout.pos.row=1,layout.pos.col=1)); print(graf,vp=grid::viewport(layout.pos.row=1,layout.pos.col=2)); grDevices::dev.off()
-  } else {
-    # No reutilizar un mapa de otra corrida si faltan los OOF de esta.
-    unlink(salida_oof)
-    message("Mapa OOF pendiente: faltan archivos locales de los tres modelos; se usa el mapa descriptivo.")
+  if (!file.exists(ruta)) stop("No se pudo guardar la figura ", ruta, ".")
+}
+
+# Datos --------------------------------------------------------------------
+registro <- read.csv("02_outputs/tables/registro_modelos.csv")
+kaggle <- read.csv("00_data/kaggle_scores.csv")
+ensayos <- read.csv("02_outputs/tables/LGBM_completo_ensayos.csv")
+pesos_red <- read.csv("02_outputs/tables/BLEND_m2_red_pesos.csv")
+if (!"archivo" %in% names(kaggle)) {
+  stop("kaggle_scores.csv no tiene la columna 'archivo'. Revise que se haya ",
+       "guardado como CSV UTF-8 sin BOM (no con Excel).")
+}
+
+fun_variante <- function(.algoritmo, .conjunto = "completo") {
+  #' Mejor variante de un algoritmo y conjunto en el registro
+  #'
+  #' Si hay varias variantes (p. ej. dos búsquedas de hiperparámetros), se
+  #' toma la de menor MAE en la CV espacial, la misma regla con la que se
+  #' eligieron los hiperparámetros.
+  #'
+  #' @returns \code{list} con archivo, MAE espacial y aleatoria, MAE y sesgo
+  #'   en las parecidas a Chapinero (millones) y puntaje de Kaggle (o NA).
+  filas <- registro[registro$algoritmo == .algoritmo &
+                      registro$conjunto == .conjunto, ]
+  if (nrow(filas) == 0) {
+    stop("No hay resultados de '", .algoritmo, "' (", .conjunto, ") en el ",
+         "registro. Corra primero el script del modelo.")
   }
-  # 12: ganancia de la rama precio/m², separada por origen del predictor.
-  imp <- filter(importancia,modelo=="m2") |> mutate(texto=grepl("^(raiz_|txt_)",Feature))
-  dic <- c(vec_precio_m2="Precio/m² vecinos",surface_covered_completa="Área cubierta",surface_total_completa="Área total",vec_precio="Precio vecinos",dist_centro_empleo_m="Dist. empleo",lat="Latitud",pct_zona_verde_500m="Zona verde",dist_via_principal_m="Dist. vía principal",raiz_balcon="Balcón",txt_parqueaderos="Parqueaderos",txt_piso="Piso",raiz_abiert="Abierto",raiz_terraz="Terraza",raiz_gimnasi="Gimnasio",raiz_bbq="BBQ",raiz_remodel="Remodelación")
-  for (txt in c(FALSE,TRUE)) {
-    d <- filter(imp,texto==txt) |> slice_max(Gain,n=8,with_ties=FALSE) |> mutate(etiqueta=coalesce(unname(dic[Feature]),Feature),etiqueta=reorder(etiqueta,Gain))
-    g <- ggplot(d,aes(100*Gain,etiqueta))+geom_col(fill=if(txt) verde else azul,width=.65)+
-      geom_text(aes(label=fmt(100*Gain)),hjust=-.2,size=3.5)+expand_limits(x=max(d$Gain)*120)+labs(x="Ganancia relativa (%)")+tema
-    guardar(g,if(txt) "compare_texto" else "compare_importancia",5.4,4.4)
-  }
-  # 13: secuencia de envíos; no atribuir causalmente la mejora.
-  p <- c("^LM_base$","^LM_completo$","^LGBM_completo_lr_","^LGBM_completo_m2_lr_","^LGBM_completo_m2_vecinos_k10_lr_","^BLEND_vecinos_red_")
-  d <- data.frame(paso=c("MCO\nbase","MCO\ncompleto","LightGBM\ncompleto","Precio\npor m²","+ vecinos","+ red"),mae=vapply(p,public,numeric(1)))
-  d$paso <- factor(d$paso,levels=d$paso)
-  g <- ggplot(d,aes(paso,mae,group=1))+geom_line(colour=gris)+geom_point(colour=azul,size=3.6)+
-    geom_text(aes(label=fmt(mae)),vjust=-1,size=3.8)+expand_limits(y=max(d$mae)+20)+labs(x=NULL,y="MAE público (M COP)")+tema+theme(axis.title.y=element_text(),panel.grid.major.y=element_line(colour="#E4E7E9"))
-  guardar(g,"compare_factores",8.3,4.1)
-  # 15: comparación de ocho esquemas de validación.
-  seleccion$esquema <- reorder(seleccion$esquema,-seleccion$brecha_absoluta_pct)
-  g <- ggplot(seleccion,aes(brecha_absoluta_pct,esquema))+geom_point(aes(colour=elegido),size=3.5)+
-    geom_text(aes(label=fmt(brecha_absoluta_pct,2)),hjust=-.2,size=3.3)+scale_colour_manual(values=c("TRUE"=azul,"FALSE"=gris),guide="none")+
-    expand_limits(x=max(seleccion$brecha_absoluta_pct)+3)+labs(x="Brecha absoluta promedio (%)")+tema
-  guardar(g,"compare_cv_esquemas")
-  message("Comparación generada; no se reentrenaron modelos.")
+  espacial <- filas[filas$tipo_cv == "espacial", ]
+  archivo <- espacial$archivo[which.min(espacial$mae)]
+  fila_esp <- espacial[espacial$archivo == archivo, ]
+  fila_ale <- filas[filas$archivo == archivo & filas$tipo_cv == "aleatoria", ]
+  puntaje <- kaggle$puntaje_publico[kaggle$archivo == archivo]
+  list(archivo = archivo,
+       espacial = fila_esp$mae / 1e6,
+       aleatoria = fila_ale$mae / 1e6,
+       similares = fila_esp$mae_similares_chapinero / 1e6,
+       sesgo = fila_esp$sesgo_similares_chapinero / 1e6,
+       kaggle = if (length(puntaje) == 1) puntaje / 1e6 else NA_real_)
+}
+
+familias <- tibble(
+  familia = c("Regresión lineal", "Elastic Net", "CART", "Random Forest",
+              "LightGBM", "Red neuronal"),
+  algoritmo_total = c("Regresión lineal", "Elastic Net", "CART",
+                      "Random Forest", "LightGBM", "Red neuronal"),
+  algoritmo_m2 = c(NA, NA, "CART precio m2", "Random Forest precio m2",
+                   "LightGBM precio m2", NA),
+  arbol = c(FALSE, FALSE, TRUE, TRUE, TRUE, FALSE)
+)
+total <- lapply(familias$algoritmo_total, fun_variante)
+m2 <- lapply(familias$algoritmo_m2, function(.a) {
+  if (is.na(.a)) NULL else fun_variante(.a)
 })
+names(total) <- names(m2) <- familias$familia
+fun_extraer <- function(.lista, .campo) {
+  sapply(.lista, function(.x) if (is.null(.x)) NA_real_ else .x[[.campo]])
+}
+familias <- familias |>
+  mutate(esp_total = fun_extraer(total, "espacial"),
+         ale_total = fun_extraer(total, "aleatoria"),
+         sesgo_total = fun_extraer(total, "sesgo"),
+         esp_m2 = fun_extraer(m2, "espacial"),
+         kaggle_total = fun_extraer(total, "kaggle"),
+         kaggle_m2 = fun_extraer(m2, "kaggle"))
+
+# 0. Datos: el precio por m² cambia con el tamaño ------------------------
+# Apartamentos de train con superficie observada en la base (cubierta o, si
+# falta, total) entre 20 y 500 m², en diez grupos por deciles de área.
+# Descriptivo: no se imputan superficies ni se estima un efecto causal.
+train <- readRDS("03_temp/train_features.rds")
+apartamentos <- train |>
+  filter(property_type == "Apartamento") |>
+  mutate(area = dplyr::coalesce(surface_covered, surface_total)) |>
+  filter(between(area, 20, 500)) |>
+  mutate(precio_m2 = price / area / 1e6)
+cortes_area <- unique(stats::quantile(apartamentos$area, seq(0, 1, 0.1)))
+deciles_area <- apartamentos |>
+  mutate(decil = cut(area, cortes_area, include.lowest = TRUE, labels = FALSE)) |>
+  group_by(decil) |>
+  summarise(area = stats::median(area), precio_m2 = stats::median(precio_m2),
+            .groups = "drop")
+mediana_m2 <- stats::median(apartamentos$precio_m2)
+minimo <- which.min(deciles_area$precio_m2)
+repunte <- minimo + which.max(deciles_area$precio_m2[-seq_len(minimo)])
+grafico_m2 <- deciles_area |>
+  ggplot(aes(x = area, y = precio_m2)) +
+  geom_hline(yintercept = mediana_m2, linetype = "dashed", color = gris) +
+  geom_line(color = color_1, linewidth = 1.1) +
+  geom_point(color = color_1, size = 3) +
+  geom_point(data = deciles_area[c(1, minimo, repunte), ], color = color_2,
+             size = 3.6) +
+  geom_text(data = deciles_area[c(1, minimo, repunte), ] |>
+              mutate(h = c(-0.1, 0.5, 0.5), v = c(-0.2, 2, -1.2)),
+            aes(label = paste0(fun_coma(area, 0), " m²: ", fun_coma(precio_m2, 2)),
+                hjust = h, vjust = v),
+            size = 3.5, color = color_2, fontface = "bold") +
+  annotate("text", x = max(deciles_area$area), y = mediana_m2, vjust = -0.6,
+           hjust = 1, size = 3.2, color = texto_2,
+           label = paste0("Mediana: ", fun_coma(mediana_m2, 2))) +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2))) +
+  labs(title = "El precio por m² no es constante",
+       subtitle = "Precio mediano por m² según el tamaño, apartamentos de train (millones de pesos)",
+       x = "Superficie mediana de cada decil (m²)", y = "Precio por m² (millones)",
+       caption = paste0("Apartamentos con superficie observada entre 20 y 500 m² (",
+                        fun_coma(nrow(apartamentos), 0), "). Diez grupos por deciles de área.")) +
+  tema
+fun_guardar(grafico_m2, "compare_precio_m2", 7.5, 4.6)
+
+# 1. Ranking con la misma información ---------------------------------------
+ranking <- familias |>
+  select(familia, `Precio total` = esp_total, `Precio por m²` = esp_m2) |>
+  pivot_longer(-familia, names_to = "objetivo", values_to = "mae") |>
+  filter(!is.na(mae)) |>
+  mutate(familia = factor(familia, levels = familias$familia[
+    order(familias$esp_total, decreasing = TRUE)]),
+    objetivo = factor(objetivo, levels = c("Precio total", "Precio por m²")))
+grafico_ranking <- ranking |>
+  ggplot(aes(x = mae, y = familia, fill = objetivo)) +
+  geom_col(position = position_dodge2(width = 0.8, preserve = "single",
+                                      reverse = TRUE), width = 0.75) +
+  geom_text(aes(label = fun_coma(mae, 1)),
+            position = position_dodge2(width = 0.8, preserve = "single",
+                                       reverse = TRUE),
+            hjust = -0.15, size = 3.1, color = texto_1) +
+  scale_fill_manual(values = c("Precio total" = color_1,
+                               "Precio por m²" = color_2), name = NULL) +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.12))) +
+  labs(title = "Con la misma información, LightGBM tiene el menor error",
+       subtitle = "MAE con la validación cruzada espacial (millones de pesos), 174 variables",
+       x = "MAE (millones)", y = NULL,
+       caption = paste0("Mismas 174 variables y mismos folds (20 regiones). Precio por m²: ",
+                        "solo donde se conoce el área; donde no, precio total.")) +
+  tema +
+  theme(panel.grid.major.y = element_blank(),
+        axis.text.y = element_text(color = texto_1, size = 10))
+fun_guardar(grafico_ranking, "compare_ranking", 7.5, 4.6)
+
+# 2. La validación aleatoria engaña más a los modelos flexibles ------------
+optimismo <- familias |>
+  mutate(familia = fct_reorder(familia, ale_total / esp_total, .desc = TRUE)) |>
+  select(familia, Aleatoria = ale_total, Espacial = esp_total) |>
+  pivot_longer(-familia, names_to = "cv", values_to = "mae")
+etiquetas_opt <- familias |>
+  mutate(pct = 100 * (1 - ale_total / esp_total),
+         familia = factor(familia, levels = levels(optimismo$familia)))
+grafico_optimismo <- optimismo |>
+  ggplot(aes(x = mae, y = familia)) +
+  geom_line(aes(group = familia), color = gris, linewidth = 1.2) +
+  geom_point(aes(color = cv), size = 3.4) +
+  geom_text(data = etiquetas_opt,
+            aes(x = esp_total, label = paste0("-", fun_coma(pct, 0), "%")),
+            hjust = -0.45, size = 3.2, color = texto_1, fontface = "bold") +
+  scale_color_manual(values = c("Aleatoria" = color_3, "Espacial" = color_2),
+                     name = "Validación cruzada") +
+  scale_x_continuous(expand = expansion(mult = c(0.05, 0.15))) +
+  labs(title = "La validación aleatoria promete mucho menos error a los modelos flexibles",
+       subtitle = "MAE con cada validación (millones de pesos), precio total, 174 variables",
+       x = "MAE (millones)", y = NULL,
+       caption = "En negrita: cuánto menos error promete la aleatoria frente a la espacial.") +
+  tema +
+  theme(panel.grid.major.y = element_blank(),
+        axis.text.y = element_text(color = texto_1, size = 10))
+fun_guardar(grafico_optimismo, "compare_cv_optimismo", 7.5, 4.6)
+
+# 3. Qué bajó más el error ----------------------------------------------------
+# Todo con la CV espacial: más información (regresión lineal con 17 frente
+# a 174 variables), mejor algoritmo (regresión lineal frente a LightGBM,
+# las dos con 174) y ajuste de hiperparámetros (peor frente a mejor de los
+# 30 ensayos de LightGBM).
+lm_base <- fun_variante("Regresión lineal", "base")
+reduccion <- tibble(
+  fuente = c("Más información\n(regresión lineal: de 17 a 174 variables)",
+             "Otro algoritmo\n(de regresión lineal a LightGBM, 174 variables)",
+             "Ajustar hiperparámetros\n(de la peor a la mejor de 30 combinaciones)"),
+  millones = c(lm_base$espacial - total[["Regresión lineal"]]$espacial,
+               total[["Regresión lineal"]]$espacial - total[["LightGBM"]]$espacial,
+               (max(ensayos$mae) - min(ensayos$mae)) / 1e6)
+) |>
+  mutate(fuente = factor(fuente, levels = rev(fuente)))
+grafico_reduccion <- reduccion |>
+  ggplot(aes(x = millones, y = fuente)) +
+  geom_col(width = 0.6, fill = c(color_2, color_1, color_3)) +
+  geom_text(aes(label = paste0("-", fun_coma(millones, 1))), hjust = -0.2,
+            size = 3.6, color = texto_1, fontface = "bold") +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.15))) +
+  labs(title = "La información y el algoritmo pesan más que los hiperparámetros",
+       subtitle = "Reducción del MAE con la validación cruzada espacial (millones de pesos)",
+       x = "Reducción del MAE (millones)", y = NULL,
+       caption = "Validación cruzada espacial de 20 regiones, precio total.") +
+  tema +
+  theme(panel.grid.major.y = element_blank(),
+        axis.text.y = element_text(color = texto_1, size = 9.5, lineheight = 0.95))
+fun_guardar(grafico_reduccion, "compare_que_baja_error", 7.5, 4.2)
+
+# 4. Más variables de texto: ¿ayudan? -----------------------------------------
+# Conjunto completo (174: 141 raíces de palabras) frente a ampliado (más
+# 12.000 términos TF-IDF), en Elastic Net y en LightGBM.
+texto <- tibble(
+  modelo = rep(c("Elastic Net", "LightGBM"), each = 2),
+  conjunto = rep(c("Completo (174)", "Ampliado (12.174)"), 2),
+  mae = c(total[["Elastic Net"]]$espacial,
+          fun_variante("Elastic Net", "ampliado")$espacial,
+          total[["LightGBM"]]$espacial,
+          fun_variante("LightGBM", "ampliado")$espacial)
+) |>
+  mutate(conjunto = factor(conjunto, levels = c("Completo (174)",
+                                                "Ampliado (12.174)")))
+grafico_texto <- texto |>
+  ggplot(aes(x = modelo, y = mae, fill = conjunto)) +
+  geom_col(position = position_dodge(width = 0.75), width = 0.7) +
+  geom_text(aes(label = fun_coma(mae, 1)), position = position_dodge(width = 0.75),
+            vjust = -0.5, size = 3.4, color = texto_1) +
+  scale_fill_manual(values = c("Completo (174)" = color_3,
+                               "Ampliado (12.174)" = color_2), name = NULL) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +
+  labs(title = "12.000 términos de texto ayudan al Elastic Net, no a LightGBM",
+       subtitle = "MAE con la validación cruzada espacial (millones de pesos)",
+       x = NULL, y = "MAE (millones)",
+       caption = "Ampliado: el conjunto completo más la matriz TF-IDF de la descripción.") +
+  tema +
+  theme(panel.grid.major.x = element_blank(),
+        axis.text.x = element_text(color = texto_1, size = 11))
+fun_guardar(grafico_texto, "compare_texto", 6.5, 4.4)
+
+# 5. Árboles frente a la red: el sesgo en viviendas como las de Chapinero --
+# Sesgo = promedio de (predicción - precio real) en el 10% de train más
+# parecido a Chapinero, con las predicciones fuera de muestra de la CV
+# espacial. Negativo: el modelo se queda corto.
+grafico_sesgo <- familias |>
+  mutate(tipo = ifelse(arbol, "Árboles", "Lineales y red"),
+         familia = fct_reorder(familia, sesgo_total)) |>
+  ggplot(aes(x = sesgo_total, y = familia, fill = tipo)) +
+  geom_col(width = 0.65) +
+  geom_vline(xintercept = 0, color = texto_2) +
+  geom_text(aes(label = fun_coma(sesgo_total, 0),
+                hjust = ifelse(sesgo_total < 0, 1.2, -0.2)),
+            size = 3.4, color = texto_1) +
+  scale_fill_manual(values = c("Árboles" = color_2, "Lineales y red" = color_3),
+                    name = NULL) +
+  scale_x_continuous(expand = expansion(mult = 0.15)) +
+  labs(title = "Los árboles se quedan cortos en viviendas como las de Chapinero",
+       subtitle = "Sesgo medio: promedio de (predicción - precio real), millones de pesos",
+       x = "Sesgo (millones); negativo = el modelo se queda corto", y = NULL,
+       caption = paste0("10% de train más parecido a Chapinero, predicciones fuera de ",
+                        "muestra con la CV espacial. Precio total, 174 variables.")) +
+  tema +
+  theme(panel.grid.major.y = element_blank(),
+        axis.text.y = element_text(color = texto_1, size = 10))
+fun_guardar(grafico_sesgo, "compare_sesgo", 7.5, 4.6)
+
+# 5b. Cuánto de la red mezclar con LightGBM -----------------------------------
+# Peso de la red elegido en el script 16: el que minimiza el MAE en las
+# parecidas a Chapinero. También se muestra el MAE en toda la CV.
+peso_elegido <- pesos_red$peso_red[which.min(pesos_red$mae_similares)]
+curva_pesos <- pesos_red |>
+  select(peso_red, `Parecidas a Chapinero` = mae_similares,
+         `Toda la CV espacial` = mae_toda_cv) |>
+  pivot_longer(-peso_red, names_to = "grupo", values_to = "mae")
+grafico_pesos <- curva_pesos |>
+  ggplot(aes(x = 100 * peso_red, y = mae, color = grupo)) +
+  geom_vline(xintercept = 100 * peso_elegido, linetype = "dotted",
+             color = texto_2) +
+  geom_line(linewidth = 1.1) +
+  geom_point(data = filter(curva_pesos, peso_red == peso_elegido), size = 3) +
+  annotate("text", x = 100 * peso_elegido, y = max(curva_pesos$mae),
+           label = paste0("Elegido: ", round(100 * peso_elegido), "% red"),
+           hjust = -0.1, vjust = 1, size = 3.4, color = color_2,
+           fontface = "bold") +
+  scale_color_manual(values = c("Parecidas a Chapinero" = color_2,
+                                "Toda la CV espacial" = color_3), name = NULL) +
+  scale_x_continuous(labels = function(x) paste0(x, "%"), breaks = seq(0, 100, 10)) +
+  labs(title = paste0("Mezclar un ", round(100 * peso_elegido),
+                      "% de red neuronal reduce el error"),
+       subtitle = "MAE de la mezcla LightGBM por m² + red neuronal (millones de pesos)",
+       x = "Peso de la red neuronal en la mezcla", y = "MAE (millones)",
+       caption = "Predicciones fuera de muestra con la CV espacial (script 16).") +
+  tema
+fun_guardar(grafico_pesos, "compare_peso_red", 7.5, 4.6)
+
+# 6. Cifras del deck ------------------------------------------------------------
+fun_cifra <- function(.x, .d = 1) ifelse(is.na(.x), "--", fun_coma(.x, .d))
+fam_corto <- c(`Regresión lineal` = "LM", `Elastic Net` = "EN", CART = "CART",
+               `Random Forest` = "RF", LightGBM = "LGBM", `Red neuronal` = "Red")
+cifras <- c()
+for (i in seq_len(nrow(familias))) {
+  corto <- fam_corto[[familias$familia[i]]]
+  cifras[paste0("CompEsp", corto)] <- fun_cifra(familias$esp_total[i])
+  cifras[paste0("CompAle", corto)] <- fun_cifra(familias$ale_total[i])
+  cifras[paste0("CompMdos", corto)] <- fun_cifra(familias$esp_m2[i])
+  cifras[paste0("CompSesgo", corto)] <- fun_cifra(familias$sesgo_total[i], 0)
+  cifras[paste0("CompOpt", corto)] <- fun_cifra(
+    100 * (1 - familias$ale_total[i] / familias$esp_total[i]), 0)
+  cifras[paste0("CompKag", corto)] <- fun_cifra(familias$kaggle_total[i])
+  cifras[paste0("CompKagMdos", corto)] <- fun_cifra(familias$kaggle_m2[i])
+}
+fun_n_busqueda <- function(.archivo) nrow(read.csv(.archivo))
+cifras <- c(
+  cifras,
+  RedInformacion = fun_coma(reduccion$millones[1], 1),
+  RedAlgoritmo = fun_coma(reduccion$millones[2], 1),
+  RedHiper = fun_coma(reduccion$millones[3], 1),
+  TextoENCompleto = fun_coma(texto$mae[1], 1),
+  TextoENAmpliado = fun_coma(texto$mae[2], 1),
+  TextoLGBMCompleto = fun_coma(texto$mae[3], 1),
+  TextoLGBMAmpliado = fun_coma(texto$mae[4], 1),
+  KagLGBMAmpliado = fun_coma(fun_variante("LightGBM", "ampliado")$kaggle, 1),
+  KagENAmpliado = fun_coma(fun_variante("Elastic Net", "ampliado")$kaggle, 1),
+  PesoRedComp = paste0(round(100 * peso_elegido), "\\%"),
+  MezclaSinRed = fun_coma(pesos_red$mae_similares[pesos_red$peso_red == 0], 1),
+  MezclaSoloRed = fun_coma(pesos_red$mae_similares[pesos_red$peso_red == 1], 1),
+  MezclaCVSinRed = fun_coma(pesos_red$mae_toda_cv[pesos_red$peso_red == 0], 1),
+  MezclaCVConRed = fun_coma(pesos_red$mae_toda_cv[pesos_red$peso_red == peso_elegido], 1),
+  MezclaConRed = fun_coma(min(pesos_red$mae_similares), 1),
+  SesgoSinRed = fun_coma(pesos_red$sesgo_similares[pesos_red$peso_red == 0], 0),
+  SesgoConRed = fun_coma(pesos_red$sesgo_similares[pesos_red$peso_red == peso_elegido], 0),
+  NBusEN = fun_n_busqueda("02_outputs/tables/EN_completo_busqueda.csv"),
+  NBusCART = fun_n_busqueda("02_outputs/tables/CART_completo_busqueda.csv"),
+  NBusRF = fun_n_busqueda("02_outputs/tables/RF_completo_busqueda.csv"),
+  NBusLGBM = nrow(ensayos),
+  MdosAreaChico = fun_coma(deciles_area$area[1], 0),
+  MdosChico = fun_coma(deciles_area$precio_m2[1], 2),
+  MdosAreaMin = fun_coma(deciles_area$area[minimo], 0),
+  MdosMin = fun_coma(deciles_area$precio_m2[minimo], 2),
+  MdosAreaRepunte = fun_coma(deciles_area$area[repunte], 0),
+  MdosRepunte = fun_coma(deciles_area$precio_m2[repunte], 2),
+  NApartamentosArea = fun_coma(nrow(apartamentos), 0),
+  # Cuánto baja el MAE de Kaggle al mezclar la red con el LightGBM con vecinos.
+  MejoraRedPct = fun_coma(100 * (1 - min(kaggle$puntaje_publico) /
+                                   fun_variante("LightGBM precio m2 + vecinos", "completo + vecinos")$kaggle / 1e6), 1),
+  NBusRed = fun_n_busqueda("02_outputs/tables/NN_completo_busqueda.csv")
+)
+writeLines(paste0("\\newcommand{\\", names(cifras), "}{", cifras, "}"),
+           "02_outputs/tables/compare_datos.tex")
+print(data.frame(cifra = names(cifras), valor = cifras), row.names = FALSE)
+
+# Limpiamos el entorno: borramos solo los objetos que creó este script.
+rm(list = setdiff(ls(), objetos_previos))

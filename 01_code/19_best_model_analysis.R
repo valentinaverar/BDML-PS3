@@ -318,6 +318,46 @@ grafico_esquemas <- ggplot() +
         panel.spacing = unit(1.5, "lines"))
 fun_guardar(grafico_esquemas, "best_cv_esquemas", 10, 4.6)
 
+# Los 8 esquemas que se compararon en el script 06: cuánto se aleja, en
+# promedio y con signo, el error que promete cada uno del error real en los
+# pseudo-Chapineros. Se eligió el de menor brecha absoluta.
+nombres_esquema <- c(
+  "Aleatoria" = "Aleatoria",
+  "k-means 5 regiones" = "5 regiones (k-means)",
+  "k-means 20 regiones" = "20 regiones (k-means)",
+  "Bloques de 300 m" = "Bloques de 300 m", "Bloques de 500 m" = "Bloques de 500 m",
+  "Bloques de 700 m" = "Bloques de 700 m", "Bloques de 1 km" = "Bloques de 1 km",
+  "Bloques de 2 km" = "Bloques de 2 km")
+seleccion <- seleccion_cv |>
+  mutate(nombre = dplyr::coalesce(unname(nombres_esquema[esquema]), esquema),
+         nombre = fct_reorder(nombre, brecha_media_pct),
+         tipo = case_when(elegido ~ "Elegida",
+                          esquema == "Aleatoria" ~ "Aleatoria",
+                          TRUE ~ "Otras espaciales"))
+grafico_seleccion <- seleccion |>
+  ggplot(aes(x = brecha_media_pct, y = nombre, fill = tipo)) +
+  geom_col(width = 0.65) +
+  geom_vline(xintercept = 0, color = texto_2) +
+  geom_text(aes(label = paste0(ifelse(brecha_media_pct > 0, "+", ""),
+                               fun_coma(brecha_media_pct, 1), "%"),
+                hjust = ifelse(brecha_media_pct < 0, 1.15, -0.15)),
+            size = 3.6, color = texto_1) +
+  scale_fill_manual(values = c("Elegida" = color_2, "Otras espaciales" = color_3,
+                               "Aleatoria" = gris), name = NULL) +
+  scale_x_continuous(labels = function(x) paste0(x, "%"),
+                     expand = expansion(mult = 0.18)) +
+  labs(title = "Probamos 8 formas de validar",
+       subtitle = "Error que promete cada validación frente al error real en los pseudo-Chapineros",
+       x = "Diferencia promedio (negativo = promete menos error del real)", y = NULL,
+       caption = paste0("Promedio en 3 pseudo-Chapineros y 2 modelos (Random Forest y ",
+                        "regresión lineal). Error real promedio: ",
+                        fun_coma(unique(round(seleccion_cv$mae_verdadero, 6)), 0),
+                        " millones.")) +
+  tema +
+  theme(panel.grid.major.y = element_blank(),
+        axis.text.y = element_text(color = texto_1, size = 10.5))
+fun_guardar(grafico_seleccion, "best_seleccion_cv", 7.5, 4.6)
+
 # 3. Cascada de envíos a Kaggle ---------------------------------------------------
 # Los pasos que llevaron al mejor modelo: cada uno agrega una idea.
 pasos <- tibble(
@@ -388,7 +428,7 @@ etiquetas <- c(
   pendiente_terreno_pct = "Pendiente del terreno",
   num_restaurantes_cafes_500m = "Restaurantes y cafés a 500 m",
   estrato_manzana = "Estrato de la manzana",
-  lat = "Latitud", lon = "Longitud",
+  lat = "Latitud (norte-sur)", lon = "Longitud (oriente-occidente)",
   txt_parqueaderos = "Parqueaderos (texto)", txt_piso = "Piso (texto)",
   property_type = "Casa o apartamento", month = "Mes", year = "Año"
 )
@@ -495,7 +535,7 @@ grafico_texto <- texto |>
   mutate(nombre = fct_reorder(nombre, gain)) |>
   ggplot(aes(x = gain, y = nombre, fill = tipo)) +
   geom_col(width = 0.7) +
-  geom_text(aes(label = etiqueta), hjust = -0.08, size = 3, color = texto_1) +
+  geom_text(aes(label = etiqueta), hjust = -0.08, size = 3.5, color = texto_1) +
   scale_fill_manual(values = c("Palabra (raíz)" = color_1,
                                "Cantidad extraída" = color_3), name = NULL) +
   scale_x_continuous(expand = expansion(mult = c(0, 0.45))) +
@@ -507,7 +547,7 @@ grafico_texto <- texto |>
                         fun_coma(gain_texto_total, 0), "% de la ganancia.")) +
   tema +
   theme(panel.grid.major.y = element_blank(),
-        axis.text.y = element_text(color = texto_1, size = 9.5))
+        axis.text.y = element_text(color = texto_1, size = 11))
 fun_guardar(grafico_texto, "best_texto_importancia", 7.5, 4.6)
 
 # 6. Lo que promete la CV frente a Kaggle --------------------------------------
@@ -637,6 +677,12 @@ cifras <- c(
   SesgoSimilares = fun_coma(fila_mejor("espacial")$sesgo_similares_chapinero / 1e6, 1),
   ErrorPct = fun_pct(mejor$puntaje_publico / precio_medio_similares),
   PrecioMedioSimilares = fun_entero(precio_medio_similares / 1e6),
+  PrecioMedioResto = fun_entero(mean(y[!similares]) / 1e6),
+  PctAptoTrain = fun_pct(mean(train$property_type == "Apartamento")),
+  PctAptoTest = fun_pct(mean(test$property_type == "Apartamento")),
+  # Anuncios sin ninguna de las dos superficies en las columnas originales.
+  PctSinSupTrain = fun_pct(mean(is.na(train$surface_covered) & is.na(train$surface_total))),
+  PctSinSupTest = fun_pct(mean(is.na(test$surface_covered) & is.na(test$surface_total))),
   NTrain = fun_entero(nrow(train)),
   NTest = fun_entero(nrow(test)),
   PctSuperficieReal = fun_pct(mean(superficie_real_test)),
@@ -653,6 +699,9 @@ cifras <- c(
   BrechaCinco = fun_coma(fun_brecha("k-means 5 regiones", "brecha_absoluta_pct"), 1),
   BrechaAleatoria = fun_coma(fun_brecha("Aleatoria", "brecha_absoluta_pct"), 1),
   NEsquemas = nrow(seleccion_cv),
+  BloquesMin = fun_coma(min(abs(seleccion_cv$brecha_media_pct[startsWith(seleccion_cv$esquema, "Bloques")])), 0),
+  BloquesMax = fun_coma(max(abs(seleccion_cv$brecha_media_pct[startsWith(seleccion_cv$esquema, "Bloques")])), 0),
+  BrechaBloqueMejor = fun_coma(min(seleccion_cv$brecha_absoluta_pct[startsWith(seleccion_cv$esquema, "Bloques")]), 1),
   # Cuánto se alejó, en promedio y con signo, el error prometido del real.
   PrometeAleatoria = fun_coma(abs(fun_brecha("Aleatoria", "brecha_media_pct")), 0),
   PrometeCinco = fun_coma(abs(fun_brecha("k-means 5 regiones", "brecha_media_pct")), 0),

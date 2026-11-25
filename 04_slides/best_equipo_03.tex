@@ -62,13 +62,13 @@
 % Cajas (block) con margen interno, para que el texto no toque los bordes.
 \setbeamertemplate{block begin}{%
   \par\vskip\medskipamount%
-  \begin{beamercolorbox}[colsep*=.5ex, leftskip=0.4ex, sep=0.9ex, vmode]{block title}%
+  \begin{beamercolorbox}[colsep*=.5ex, leftskip=1.2ex, sep=0.9ex, vmode]{block title}%
     \usebeamerfont*{block title}\insertblocktitle%
   \end{beamercolorbox}%
   \nointerlineskip%
-  \begin{beamercolorbox}[colsep*=.5ex, leftskip=0.4ex, sep=1ex, vmode]{block body}%
+  \begin{beamercolorbox}[colsep*=.5ex, leftskip=1.2ex, sep=1ex, vmode]{block body}%
     \usebeamerfont{block body}%
-    \begin{adjustwidth}{0pt}{2.5ex}%
+    \begin{adjustwidth}{0pt}{1.2ex}%
 }
 \setbeamertemplate{block end}{\end{adjustwidth}\end{beamercolorbox}\vskip\smallskipamount}
 % Nota pequeña al pie de una diapositiva (fuente de los datos).
@@ -112,7 +112,7 @@
 \section{Mejor modelo}
 % ============================================================
 
-\begin{frame}{Mejor modelo: LightGBM con el precio de los vecinos, mezclado con una red}
+\begin{frame}{Mejor modelo: LightGBM con el precio de los vecinos + red neuronal}
   \begin{columns}[c, onlytextwidth]
     \begin{column}{0.47\textwidth}
       \centering
@@ -204,11 +204,11 @@
 
 \begin{frame}{¿Qu\'e palabras del anuncio ayudan a predecir el precio?}
   \begin{columns}[c, onlytextwidth]
-    \begin{column}{0.62\textwidth}
+    \begin{column}{0.68\textwidth}
       \centering
-      \includegraphics[width=\linewidth, height=0.82\textheight, keepaspectratio]{best_texto_importancia}
+      \includegraphics[width=\linewidth, height=0.86\textheight, keepaspectratio]{best_texto_importancia}
     \end{column}
-    \begin{column}{0.35\textwidth}
+    \begin{column}{0.29\textwidth}
       \footnotesize
       \begin{itemize}
         \item \textbf{Bolsa de palabras:} limpiamos la descripci\'on, reducimos cada palabra a su ra\'iz y marcamos 1 si el anuncio la usa.
@@ -224,8 +224,9 @@
 % ============================================================
 
 \begin{frame}{Tres validaciones cruzadas: la aleatoria es demasiado optimista}
+  \vspace{3mm}
   \centering
-  \includegraphics[width=\linewidth, height=0.6\textheight, keepaspectratio]{best_cv_esquemas}
+  \includegraphics[width=\linewidth, height=0.56\textheight, keepaspectratio]{best_cv_esquemas}
   \vspace{-1mm}
   \begin{columns}[T, onlytextwidth]
     \begin{column}{0.31\textwidth}
@@ -250,7 +251,8 @@
   \begin{columns}[c, onlytextwidth]
     \begin{column}{0.42\textwidth}
       \centering
-      \includegraphics[width=\linewidth, height=0.86\textheight, keepaspectratio]{best_pseudo_chapinero_mapa}
+      \vspace{6mm}
+      \includegraphics[width=\linewidth, height=0.72\textheight, keepaspectratio]{best_pseudo_chapinero_mapa}
     \end{column}
     \begin{column}{0.55\textwidth}
       \small
@@ -265,6 +267,24 @@
     \end{column}
   \end{columns}
   \nota{Promedio de 3 zonas y 2 modelos (Random Forest y regresi\'on lineal).}
+\end{frame}
+
+\begin{frame}{Probamos 8 formas de validar: la de 20 regiones es la m\'as cercana al error real}
+  \begin{columns}[c, onlytextwidth]
+    \begin{column}{0.62\textwidth}
+      \centering
+      \includegraphics[width=\linewidth, height=0.82\textheight, keepaspectratio]{best_seleccion_cv}
+    \end{column}
+    \begin{column}{0.35\textwidth}
+      \footnotesize
+      \begin{itemize}
+        \item Con los pseudo-Chapineros comparamos 8 esquemas: la aleatoria, regiones de k-means (5 y 20) y bloques cuadrados de 300 m a 2 km.
+        \item \textbf{La aleatoria} promete \PrometeAleatoria\% menos error del real; \textbf{5 regiones}, \PrometeCinco\% m\'as.
+        \item \textbf{Los bloques} prometen entre \BloquesMin\% y \BloquesMax\% menos; \textbf{20 regiones}, solo \PrometeVeinte\%.
+        \item Criterio: la menor diferencia absoluta promedio (\BrechaElegido\% frente a \BrechaBloqueMejor\% del mejor bloque).
+      \end{itemize}
+    \end{column}
+  \end{columns}
 \end{frame}
 
 % ============================================================
@@ -361,6 +381,7 @@
       \begin{itemize}
         \item El precio por m\textsuperscript{2} de los vecinos es la variable principal: resume cu\'anto vale la zona.
         \item \textbf{Por bloques, la ubicaci\'on suma \GainUbicacion\%} de la ganancia (entorno y vecinos), la vivienda \GainVivienda\% y el texto \GainTexto\%.
+        \item Latitud y longitud captan el gradiente de precios: m\'as caro al norte y al oriente.
         \item No son efectos causales.
       \end{itemize}
     \end{column}
@@ -368,12 +389,14 @@
 \end{frame}
 
 \begin{frame}{La validaci\'on cruzada promete menos error del que tuvimos en Chapinero}
-  \begin{columns}[c, totalwidth=0.94\textwidth]
-    \begin{column}{0.52\textwidth}
+  \begin{columns}[c, totalwidth=0.96\textwidth]
+    \begin{column}{0.56\textwidth}
       \centering
-      \includegraphics[width=\linewidth, height=0.8\textheight, keepaspectratio]{best_cv_frente_kaggle}
+      \includegraphics[width=\linewidth, height=0.86\textheight, keepaspectratio]{best_cv_frente_kaggle}
     \end{column}
-    \begin{column}{0.44\textwidth}
+    \begin{column}{0.03\textwidth}
+    \end{column}
+    \begin{column}{0.37\textwidth}
       \footnotesize
       \begin{itemize}
         \item \textbf{Nivel:} en Kaggle el error (\MAEKaggle) fue mayor que en cualquier validaci\'on. Chapinero fue m\'as dif\'icil de lo que se puede simular con train.
@@ -497,24 +520,24 @@
   \vspace{2mm}
   \begin{columns}[T, onlytextwidth]
     \begin{column}{0.48\textwidth}
-      \begin{block}{M\'as y mejores datos}
+      \begin{alertblock}{M\'as y mejores datos}
         \footnotesize
         \begin{itemize}\setlength{\itemsep}{2pt}
           \item \textbf{Precios de cierre} en lugar de precios de oferta del anuncio.
           \item \textbf{Aprender de Chapinero:} agregar al entrenamiento las viviendas que la empresa compre y venda all\'i.
           \item \textbf{\'Area real de todas las viviendas} (catastro o visita): hoy falta en el \PctSuperficieImputada{} de Chapinero, y sin ella no se puede usar el precio por m\textsuperscript{2}.
         \end{itemize}
-      \end{block}
+      \end{alertblock}
     \end{column}
     \begin{column}{0.48\textwidth}
-      \begin{block}{Mejor modelo y mejor validaci\'on}
+      \begin{alertblock}{Mejor modelo y mejor validaci\'on}
         \footnotesize
         \begin{itemize}\setlength{\itemsep}{2pt}
           \item \textbf{Un precio conservador para cada vivienda:} predecir un percentil bajo del precio (p\'erdida por cuantiles) en lugar de aplicar el mismo descuento a todas.
           \item \textbf{Un modelo aparte para casas,} donde el error es mayor.
           \item \textbf{Una validaci\'on que respete la distancia real a los vecinos:} la CV espacial los aleja m\'as que en Chapinero y por eso juzg\'o mal esa variable.
         \end{itemize}
-      \end{block}
+      \end{alertblock}
     \end{column}
   \end{columns}
 \end{frame}
