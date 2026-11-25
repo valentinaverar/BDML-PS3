@@ -62,7 +62,25 @@ El script maestro corre todo en el orden de la numeración. Cada script también
 - **Red neuronal (script 12).** Usa `keras3`, que necesita Python con TensorFlow. Si no está instalado, puede instalarse una vez con `keras3::install_keras()`.
 - **Presentaciones.** Se compilan con XeLaTeX vía `tinytex`. Si no hay LaTeX instalado, el script maestro avisa y sigue sin compilar.
 
-Los pasos más demorados son la elección del esquema de validación cruzada (script 06) y las búsquedas de hiperparámetros de los modelos (scripts 09 a 12).
+### Reproducibilidad: búsquedas guardadas e interruptores
+
+Las búsquedas de hiperparámetros toman varias horas. Por eso sus resultados están guardados en `02_outputs/tables/`, y cada script de modelo tiene un interruptor al inicio que decide si se repite la búsqueda o se usa la tabla guardada:
+
+| Script | Interruptor (valor en el repo) | Tabla que usa | Con `TRUE` |
+|---|---|---|---|
+| `09_model_cart.R` | `buscar_hiperparametros <- FALSE` | `CART_completo_busqueda.csv` | Repite la grilla completa (15 combinaciones) |
+| `10_model_random_forest.R` | `buscar_hiperparametros <- FALSE` | `RF_completo_busqueda.csv` | Repite la grilla completa |
+| `11_model_boosting.R` | `buscar_hiperparametros <- FALSE` | `LGBM_completo_ensayos.csv` | Borra la tabla y repite los 30 ensayos |
+| `12_model_neural_network.R` | `buscar_hiperparametros <- TRUE` | `NN_completo_busqueda.csv` | Solo evalúa las arquitecturas que falten en la tabla (hoy están las 4) |
+
+- **Con los valores del repo**, `00_rundirectory.R` no repite las búsquedas: lee la mejor combinación de cada tabla, entrena el modelo final con la semilla fija (`2026`) y genera las mismas predicciones, el mismo registro de modelos y las mismas cifras de las presentaciones.
+- **Para repetir una búsqueda**, cambie su interruptor a `TRUE` (en el 12, borre además `NN_completo_busqueda.csv`). Tenga en cuenta:
+  - Toma varias horas.
+  - En el script 11, si la optimización bayesiana falla, la búsqueda se completa con ensayos aleatorios. Los 30 ensayos guardados salieron de búsqueda aleatoria, así que una nueva corrida puede elegir otros hiperparámetros.
+  - La red neuronal (12) usa TensorFlow, que no garantiza resultados idénticos entre computadores o versiones, aun con la misma semilla.
+- **Archivos intermedios.** `03_build_geo_features.R` (con `forzar_recalculo <- FALSE`) y `14_model_blend_elastic_net.R` reutilizan resultados que ellos mismos guardaron en `03_temp/`. Esa carpeta no se sube al repositorio, así que en un clon nuevo se recalculan.
+- **Pasos demorados.** Incluso sin repetir las búsquedas, los pasos más largos son la elección del esquema de validación cruzada (script 06) y el entrenamiento de Random Forest, LightGBM y la red neuronal.
+- **Envíos de Kaggle.** `00_data/kaggle_scores.csv` registra todos los envíos del equipo. Seis no se generan con el código de `main` porque salieron de versiones exploratorias anteriores: `LM_BASIC`, `LGBM_lr_00318_…`, `EN_completo_a_1_l_0_000382`, `BLEND_completo_wm2_0_20_wp_0_05_sesgo_menos_2`, `LGBM_completo_m2_vecinos_k10_dmin200_…` y `LGBM_completo_lr_0_012_…`. Los demás, incluido el mejor modelo (`BLEND_vecinos_red_w_0_25`, 164,5), salen del código del repositorio. `CART_completo_cp_0_0001_minbucket_100` y `EN_completo_alpha_1_lambda_0_00141` se enviaron después del cierre de la competencia y no cuentan en el leaderboard.
 
 ## Estructura del repositorio
 
@@ -129,7 +147,7 @@ Todas se generan con el código, en `02_outputs/`:
 - **Figuras** (`figures/`) y **tablas y cifras** (`tables/`) que usan las presentaciones.
 - **Predicciones** (`predictions/`): los archivos enviados a Kaggle. El nombre indica el algoritmo y sus hiperparámetros.
 - **Registro de modelos** (`tables/registro_modelos.csv`): una fila por variante y tipo de validación cruzada, con su configuración y sus métricas de error fuera de muestra (también en las viviendas más parecidas a Chapinero).
-- **Puntajes de Kaggle** (`00_data/kaggle_scores.csv`): puntaje público de cada envío, con su descripción y autor.
+- **Puntajes de Kaggle** (`00_data/kaggle_scores.csv`): puntaje público de cada envío del equipo, con su descripción y autor (ver la sección de reproducibilidad).
 
 ## Software
 
